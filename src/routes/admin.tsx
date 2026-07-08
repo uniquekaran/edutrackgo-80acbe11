@@ -45,7 +45,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 
-type Tab = "roster" | "documents" | "analytics";
+type Tab = "roster" | "documents" | "analytics" | "ppts" | "broadcast";
 
 function AdminConsole() {
   const navigate = useNavigate();
