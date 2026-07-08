@@ -13,12 +13,16 @@ const ADMIN_PASSWORD = "Karan@123";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — EduTrack" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
   const user = useStore((s) => s.user);
+  const { next } = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
@@ -27,15 +31,18 @@ function AuthPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (user) navigate({ to: user.role === "admin" ? "/admin" : "/student" });
-  }, [user, navigate]);
+    if (!user) return;
+    if (next) { window.location.href = next; return; }
+    navigate({ to: user.role === "admin" ? "/admin" : "/student" });
+  }, [user, navigate, next]);
 
   async function handleGoogle() {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
+      const redirect_uri = next
+        ? `${window.location.origin}/auth?next=${encodeURIComponent(next)}`
+        : window.location.origin;
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
       if (result.error) {
         toast.error(result.error.message ?? "Sign-in failed. Please try again.");
         setLoading(false);
@@ -47,6 +54,7 @@ function AuthPage() {
       setLoading(false);
     }
   }
+
 
   async function handleAdminLogin(e: React.FormEvent) {
     e.preventDefault();
