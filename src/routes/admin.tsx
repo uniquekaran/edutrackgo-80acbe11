@@ -60,7 +60,7 @@ function AdminConsole() {
   // Auth gate: wait for hydration; bypass for the configured admin email.
   const isAuthorized = useMemo(() => {
     if (!user) return null; // still loading
-    if (user.email?.toLowerCase() === ADMIN_BYPASS_EMAIL) return true;
+    if (user.email && ADMIN_BYPASS_EMAILS.includes(user.email.toLowerCase())) return true;
     return user.role === "admin";
   }, [user]);
 
