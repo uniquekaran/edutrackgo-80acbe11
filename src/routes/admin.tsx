@@ -1210,3 +1210,172 @@ function LiveActivityFeed({
     </section>
   );
 }
+
+/* ============================ PPT Reviewer ============================ */
+
+interface PPTRow {
+  id: string;
+  user_id: string;
+  slot: number;
+  title: string;
+  file_path: string | null;
+  status: "Pending" | "Approved" | "Revise";
+  reviewer_notes: string | null;
+  risk_recovery: boolean;
+  created_at: string;
+  updated_at: string;
+  profiles?: { full_name: string | null; email: string | null; college: string | null } | null;
+}
+
+function PPTReviewer() {
+  const [rows, setRows] = useState<PPTRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [note, setNote] = useState<Record<string, string>>({});
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ppt_submissions")
+      .select("id,user_id,slot,title,file_path,status,reviewer_notes,risk_recovery,created_at,updated_at, profiles:profiles!ppt_submissions_user_id_fkey(full_name,email,college)")
+      .order("created_at", { ascending: false });
+    setRows((data ?? []) as unknown as PPTRow[]);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function decide(row: PPTRow, status: "Approved" | "Revise") {
+    const { error } = await supabase
+      .from("ppt_submissions")
+      .update({ status, reviewer_notes: note[row.id] ?? row.reviewer_notes ?? null })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "Approved" ? "Approved" : "Sent back for revision");
+    load();
+  }
+
+  async function download(row: PPTRow) {
+    if (!row.file_path) return;
+    const { data } = await supabase.storage.from("student-documents").createSignedUrl(row.file_path, 60 * 60);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  }
+
+  return (
+    <div className="px-5 pt-5 space-y-3">
+      <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground">PPT Reviewer</p>
+      {loading && <p className="text-sm text-muted-foreground">Loading submissions…</p>}
+      {!loading && rows.length === 0 && (
+        <div className="rounded-2xl bg-secondary/50 p-6 text-center text-sm text-muted-foreground">No submissions yet.</div>
+      )}
+      {rows.map((r) => (
+        <div key={r.id} className="rounded-2xl bg-surface shadow-soft p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate">Slot {r.slot} · {r.title}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {r.profiles?.full_name ?? r.profiles?.email ?? r.user_id} · {r.profiles?.college ?? "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                Risk & Recovery: <span className={r.risk_recovery ? "text-success font-black" : "text-destructive font-black"}>{r.risk_recovery ? "Confirmed" : "Not confirmed"}</span>
+              </p>
+            </div>
+            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${r.status === "Approved" ? "bg-success/15 text-success" : r.status === "Revise" ? "bg-destructive/15 text-destructive" : "bg-amber-100 text-amber-700"}`}>
+              {r.status}
+            </span>
+          </div>
+          <textarea
+            defaultValue={r.reviewer_notes ?? ""}
+            placeholder="Reviewer notes (optional)…"
+            onChange={(e) => setNote((n) => ({ ...n, [r.id]: e.target.value }))}
+            className="mt-3 w-full rounded-xl bg-secondary p-2.5 text-xs font-medium outline-none focus:bg-surface focus:border-primary border border-transparent"
+            rows={2}
+          />
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <button onClick={() => download(r)} disabled={!r.file_path}
+              className="h-10 rounded-xl bg-secondary text-xs font-bold disabled:opacity-40">View file</button>
+            <button onClick={() => decide(r, "Approved")}
+              className="h-10 rounded-xl bg-success text-white text-xs font-bold inline-flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Approve</button>
+            <button onClick={() => decide(r, "Revise")}
+              className="h-10 rounded-xl bg-destructive text-white text-xs font-bold inline-flex items-center justify-center gap-1"><XCircle className="w-4 h-4" /> Revise</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================ Broadcast ============================ */
+
+interface BroadcastRow { id: string; title: string; body: string; audience: string; created_at: string; }
+
+function BroadcastPanel({ authorId }: { authorId: string }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [audience, setAudience] = useState<"core" | "all">("core");
+  const [rows, setRows] = useState<BroadcastRow[]>([]);
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    const { data } = await supabase
+      .from("broadcasts").select("id,title,body,audience,created_at")
+      .order("created_at", { ascending: false }).limit(30);
+    setRows((data ?? []) as BroadcastRow[]);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function send() {
+    if (!title.trim() || !body.trim()) { toast.error("Title and body are required."); return; }
+    setSending(true);
+    const { error } = await supabase.from("broadcasts").insert({ title: title.trim(), body: body.trim(), audience, created_by: authorId });
+    setSending(false);
+    if (error) { toast.error(error.message); return; }
+    setTitle(""); setBody("");
+    toast.success("Broadcast sent");
+    load();
+  }
+
+  async function remove(id: string) {
+    const { error } = await supabase.from("broadcasts").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    load();
+  }
+
+  return (
+    <div className="px-5 pt-5 space-y-4">
+      <div className="rounded-2xl bg-surface shadow-soft p-4 space-y-3">
+        <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground flex items-center gap-1.5">
+          <Radio className="w-3.5 h-3.5" /> Send Broadcast
+        </p>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Alert title"
+          className="w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:bg-surface" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Broadcast message…" rows={3}
+          className="w-full px-3 py-2 rounded-xl bg-secondary text-sm font-medium outline-none focus:bg-surface" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setAudience("core")} className={`h-9 px-3 rounded-lg text-xs font-black ${audience === "core" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>AKTU / VSET</button>
+          <button onClick={() => setAudience("all")} className={`h-9 px-3 rounded-lg text-xs font-black ${audience === "all" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>All Users</button>
+          <button onClick={send} disabled={sending} className="ml-auto h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-xs font-black inline-flex items-center gap-1.5 disabled:opacity-60">
+            <Send className="w-4 h-4" /> {sending ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </div>
+
+      <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground">Recent</p>
+      {rows.length === 0 && <p className="text-sm text-muted-foreground">No broadcasts yet.</p>}
+      {rows.map((b) => (
+        <div key={b.id} className="rounded-2xl bg-surface shadow-soft p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold truncate">{b.title}</p>
+            <span className="text-[10px] font-black uppercase text-primary shrink-0">{b.audience}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{b.body}</p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-[10px] text-muted-foreground/70">{formatISTDateTime(b.created_at)}</p>
+            <button onClick={() => remove(b.id)} className="text-[10px] font-black uppercase text-destructive inline-flex items-center gap-1">
+              <Trash2 className="w-3 h-3" /> Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
