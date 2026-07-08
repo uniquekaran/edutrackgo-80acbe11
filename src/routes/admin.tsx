@@ -177,16 +177,20 @@ function AdminConsole() {
       </header>
 
       <div className="px-5 -mt-5 sticky top-0 z-20">
-        <div className="rounded-2xl bg-surface shadow-elevated p-1 grid grid-cols-3 gap-1">
+        <div className="rounded-2xl bg-surface shadow-elevated p-1 grid grid-cols-5 gap-1 overflow-x-auto">
           <TabBtn active={tab === "roster"} onClick={() => setTab("roster")} icon={<Users className="w-4 h-4" />} label="Roster" />
-          <TabBtn active={tab === "documents"} onClick={() => setTab("documents")} icon={<ShieldCheck className="w-4 h-4" />} label="Documents" />
-          <TabBtn active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
+          <TabBtn active={tab === "documents"} onClick={() => setTab("documents")} icon={<ShieldCheck className="w-4 h-4" />} label="Docs" />
+          <TabBtn active={tab === "ppts"} onClick={() => setTab("ppts")} icon={<FileText className="w-4 h-4" />} label="PPTs" />
+          <TabBtn active={tab === "broadcast"} onClick={() => setTab("broadcast")} icon={<Radio className="w-4 h-4" />} label="Broadcast" />
+          <TabBtn active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<BarChart3 className="w-4 h-4" />} label="Stats" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8 animate-in fade-in duration-200" key={tab}>
         {tab === "roster" && <Roster students={students} docs={docs} onOpen={setSelectedStudent} />}
         {tab === "documents" && <DocumentsHub docs={docs} onPreview={setPreview} />}
+        {tab === "ppts" && <PPTReviewer />}
+        {tab === "broadcast" && <BroadcastPanel authorId={user.id} />}
         {tab === "analytics" && <Analytics students={students} docs={docs} authorName={user.name ?? "Admin"} />}
       </div>
 
