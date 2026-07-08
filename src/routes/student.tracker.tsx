@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, ClipboardList, GaugeCircle, AlertCircle } from "lucide-react";
+import { CalendarCheck2, ClipboardList, GaugeCircle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useStore, attendanceStats } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatISTDate } from "@/lib/format";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/student/tracker")({
   head: () => ({ meta: [{ title: "Academic Tracker — EduTrack" }] }),
@@ -31,6 +32,25 @@ function TrackerPage() {
   const maybeUser = useStore((s) => s.user);
   const attendance = useStore((s) => s.attendance);
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [doneKeys, setDoneKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!maybeUser) return;
+    (async () => {
+      const { data } = await supabase.from("user_activities").select("activity_key").eq("user_id", maybeUser.id).eq("status", "done");
+      setDoneKeys(new Set((data ?? []).map((r) => r.activity_key)));
+    })();
+  }, [maybeUser]);
+
+  async function markDone(key: string, label: string) {
+    if (!maybeUser) return;
+    const { error } = await supabase.from("user_activities").upsert({
+      user_id: maybeUser.id, activity_key: key, status: "done", completed_at: new Date().toISOString(),
+    }, { onConflict: "user_id,activity_key" });
+    if (error) return toast.error(error.message);
+    setDoneKeys((s) => new Set(s).add(key));
+    toast.success(`Marked "${label}" as done`);
+  }
 
   useEffect(() => {
     if (!maybeUser) return;
@@ -114,18 +134,28 @@ function TrackerPage() {
       <section className="px-5 mt-5">
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Upcoming internal tests</h2>
         <div className="space-y-2">
-          {INTERNAL_TESTS.map((t) => (
-            <div key={t.subject} className="rounded-2xl glass shadow-soft p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-primary text-primary-foreground grid place-items-center shrink-0">
-                <ClipboardList className="w-4 h-4" />
+          {INTERNAL_TESTS.map((t) => {
+            const key = `test:${t.subject}`;
+            const done = doneKeys.has(key);
+            return (
+              <div key={t.subject} className="rounded-2xl glass shadow-soft p-3.5 flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${done ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" : "gradient-primary text-primary-foreground"}`}>
+                  {done ? <CheckCircle2 className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">{t.subject}</p>
+                  <p className="text-[11px] text-muted-foreground">{formatISTDate(t.date)}</p>
+                </div>
+                <button
+                  disabled={done}
+                  onClick={() => markDone(key, t.subject)}
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full ${done ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" : "bg-secondary text-foreground"}`}
+                >
+                  {done ? "Done" : "Mark done"}
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold">{t.subject}</p>
-                <p className="text-[11px] text-muted-foreground">{formatISTDate(t.date)}</p>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Scheduled</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

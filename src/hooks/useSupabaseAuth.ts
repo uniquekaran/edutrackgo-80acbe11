@@ -33,11 +33,22 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
       full_name: name,
       avatar_url: avatarUrl ?? null,
       department: role === "student" ? randomDepartment() : null,
+      college: adminByEmail ? "AKTU" : null,
     });
   }
 
-  const needsOnboarding = role === "student" && !adminByEmail && !profile?.college;
-  return { user: { id: userId, name, email, role, department, college: profile?.college ?? null }, needsOnboarding };
+  // HARD-CODED OVERRIDE: master admin accounts always get admin + AKTU college.
+  let college = profile?.college ?? (adminByEmail ? "AKTU" : null);
+  if (adminByEmail && profile?.college !== "AKTU") {
+    await supabase.from("profiles").update({ college: "AKTU" }).eq("id", userId);
+    college = "AKTU";
+  }
+  if (adminByEmail && !roleRow) {
+    await supabase.from("user_roles").insert({ user_id: userId, role: "admin" }).select().maybeSingle();
+  }
+
+  const needsOnboarding = role === "student" && !adminByEmail && !college;
+  return { user: { id: userId, name, email, role, department, college }, needsOnboarding };
 }
 
 export function useSupabaseAuth() {

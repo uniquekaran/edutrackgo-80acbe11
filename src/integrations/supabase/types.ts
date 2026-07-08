@@ -68,6 +68,48 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string | null
+          logo_url: string | null
+          name: string
+          notes: string | null
+          sector: string | null
+          tier: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          sector?: string | null
+          tier?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          sector?: string | null
+          tier?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           created_at: string
@@ -386,6 +428,45 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          difficulty: string | null
+          id: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          subject: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          subject: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       student_profiles_detail: {
         Row: {
           avatar_url: string | null
@@ -434,6 +515,36 @@ export type Database = {
         }
         Relationships: []
       }
+      syllabi: {
+        Row: {
+          college: string
+          created_at: string
+          file_url: string
+          id: string
+          subject: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          college: string
+          created_at?: string
+          file_url: string
+          id?: string
+          subject: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          file_url?: string
+          id?: string
+          subject?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       todo_list: {
         Row: {
           created_at: string
@@ -464,6 +575,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activities: {
+        Row: {
+          activity_key: string
+          completed_at: string
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_key: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_key?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -485,6 +629,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_stats: {
+        Row: {
+          id: string
+          score: number
+          subject: string | null
+          taken_at: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          score?: number
+          subject?: string | null
+          taken_at?: string
+          total?: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          score?: number
+          subject?: string | null
+          taken_at?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -499,7 +670,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "student" | "admin"
+      app_role: "student" | "admin" | "teacher"
       noc_status: "pending" | "approved" | "rejected"
       noc_type: "leave" | "event" | "internship" | "other"
     }
@@ -629,7 +800,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "admin"],
+      app_role: ["student", "admin", "teacher"],
       noc_status: ["pending", "approved", "rejected"],
       noc_type: ["leave", "event", "internship", "other"],
     },
