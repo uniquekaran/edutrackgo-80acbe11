@@ -82,7 +82,7 @@ function AdminConsole() {
         const [studentsRes, docsRes] = await Promise.all([
           supabase
             .from("profiles")
-            .select("id, email, full_name, department, created_at")
+            .select("id, email, full_name, department, college, professional_tier, created_at")
             .order("created_at", { ascending: false }),
           supabase
             .from("documents")
