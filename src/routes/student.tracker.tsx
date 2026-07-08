@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, ClipboardList, GaugeCircle, AlertCircle } from "lucide-react";
+import { CalendarCheck2, ClipboardList, GaugeCircle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useStore, attendanceStats } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { formatISTDate } from "@/lib/format";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/student/tracker")({
   head: () => ({ meta: [{ title: "Academic Tracker — EduTrack" }] }),
