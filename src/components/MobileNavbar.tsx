@@ -21,6 +21,7 @@ export function MobileNavbar() {
   }
 
   const admin = isAdminEmail(user?.email) || user?.role === "admin";
+  const items = getMenuForUser(user);
 
   return (
     <header className="md:hidden sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border/60">
