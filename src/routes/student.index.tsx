@@ -160,6 +160,22 @@ function StudentDashboard() {
 
       <section className="px-5 mt-6">
         <div className="flex items-center justify-between mb-2.5">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            {isCoreMember ? "Command Center" : "Enterprise Mode"}
+          </h2>
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+            {isCoreMember ? "Core Committee" : "Global Standard"}
+          </span>
+        </div>
+        {isCoreMember ? (
+          <CoreDashboard userId={user.id} />
+        ) : (
+          <GlobalDashboard readinessPct={stats.pct} />
+        )}
+      </section>
+
+      <section className="px-5 mt-6">
+        <div className="flex items-center justify-between mb-2.5">
           <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Quick links</h2>
         </div>
         <div className="grid grid-cols-2 gap-3">
