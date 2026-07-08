@@ -1,38 +1,17 @@
 import { Link } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  ShieldCheck,
-  ScrollText,
-  BookOpen,
-  GraduationCap,
-  LogOut,
-  Sparkles,
-  BookOpenCheck,
-  GaugeCircle,
-  Presentation,
-  Users,
-} from "lucide-react";
+import { GraduationCap, LogOut, Users } from "lucide-react";
 import { signOut as clearLocalUser, useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isAdminEmail } from "@/lib/tenant";
-
-const ITEMS = [
-  { to: "/student" as const, label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/student/eduai" as const, label: "EduAI Assistant", icon: Sparkles },
-  { to: "/student/exams" as const, label: "Exam Portal & PYQs", icon: BookOpenCheck },
-  { to: "/student/tracker" as const, label: "Academic Tracker", icon: GaugeCircle },
-  { to: "/student/competency" as const, label: "PPT Vault", icon: Presentation },
-  { to: "/student/vault" as const, label: "Documents Vault", icon: ShieldCheck },
-  { to: "/student/noc" as const, label: "NOC Requests", icon: ScrollText },
-  { to: "/student/materials" as const, label: "Academic Portal", icon: BookOpen },
-];
+import { getMenuForUser } from "@/lib/sidebar-menu";
 
 export function DesktopSidebar() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
+  const items = getMenuForUser(user);
 
   async function handleSignOut() {
     try { await supabase.auth.signOut(); } catch { /* noop */ }
@@ -53,12 +32,12 @@ export function DesktopSidebar() {
         </div>
       </div>
 
-      <nav className="mt-8 space-y-1.5 flex-1">
-        {ITEMS.map((it) => {
+      <nav className="mt-8 space-y-1.5 flex-1 overflow-y-auto">
+        {items.map((it, i) => {
           const Icon = it.icon;
           return (
             <Link
-              key={it.to}
+              key={`${it.to}-${i}`}
               to={it.to}
               activeOptions={{ exact: it.exact }}
               className="group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 data-[status=active]:text-primary-foreground data-[status=active]:gradient-primary data-[status=active]:shadow-elevated transition-all"

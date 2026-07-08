@@ -1,9 +1,11 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { MobileNavbar } from "@/components/MobileNavbar";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
-import { store } from "@/lib/store";
+import { store, useStore } from "@/lib/store";
+import { isAdminEmail } from "@/lib/tenant";
 
 export const Route = createFileRoute("/student")({
   beforeLoad: () => {
@@ -16,8 +18,28 @@ export const Route = createFileRoute("/student")({
   component: StudentLayout,
 });
 
-
 function StudentLayout() {
+  const user = useStore((s) => s.user);
+  const navigate = useNavigate();
+  const needsOnboarding = !!user && user.role === "student" && !isAdminEmail(user.email) && !user.college;
+
+  useEffect(() => {
+    if (!needsOnboarding) return;
+    const t = setTimeout(() => navigate({ to: "/onboarding" }), 500);
+    return () => clearTimeout(t);
+  }, [needsOnboarding, navigate]);
+
+  if (needsOnboarding) {
+    return (
+      <div className="min-h-screen w-full grid place-items-center bg-background">
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-xs uppercase tracking-widest text-muted-foreground font-black">Redirecting to onboarding…</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full flex bg-background">
       <DesktopSidebar />
@@ -35,3 +57,4 @@ function StudentLayout() {
     </div>
   );
 }
+

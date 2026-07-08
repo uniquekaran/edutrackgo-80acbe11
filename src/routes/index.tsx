@@ -49,7 +49,7 @@ function Welcome() {
               to="/auth"
               className="flex items-center justify-center gap-2 w-full h-14 rounded-2xl bg-white text-primary font-bold shadow-elevated active:scale-[0.98] transition-transform"
             >
-              Continue with Google <ArrowRight className="w-5 h-5" />
+              Teacher / Student Login <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
               to="/network"

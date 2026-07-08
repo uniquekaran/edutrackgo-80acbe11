@@ -8,6 +8,7 @@ export interface User {
   email: string;
   role: Role;
   department?: string;
+  college?: string | null;
 }
 
 export type DocStatus = "pending" | "verified" | "rejected";

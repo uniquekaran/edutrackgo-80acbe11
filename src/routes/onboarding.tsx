@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "@/lib/store";
+import { useStore, setCurrentUser } from "@/lib/store";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { toast } from "sonner";
 import { GraduationCap, ShieldCheck, Sparkles } from "lucide-react";
@@ -70,6 +70,7 @@ function OnboardingPage() {
       .eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+    setCurrentUser({ ...user, name: parsed.data.full_name, college: parsed.data.college });
     toast.success("Workspace personalized");
     navigate({ to: "/student" });
   }
