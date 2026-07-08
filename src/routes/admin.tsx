@@ -19,7 +19,7 @@ import { formatISTDate, formatISTDateTime } from "@/lib/format";
 import { StatusTag, type DocStatus } from "./student.documents";
 
 
-const ADMIN_BYPASS_EMAIL = "630karan2@gmail.com";
+const ADMIN_BYPASS_EMAILS = ["vset.official@gmail.com", "630karan@gmail.com", "630karan2@gmail.com"];
 
 interface DocRow {
   id: string;
@@ -35,6 +35,8 @@ interface StudentRow {
   email: string;
   full_name: string | null;
   department: string | null;
+  college: string | null;
+  professional_tier: string | null;
   created_at: string;
 }
 
@@ -45,7 +47,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 
-type Tab = "roster" | "documents" | "analytics";
+type Tab = "roster" | "documents" | "analytics" | "ppts" | "broadcast";
 
 function AdminConsole() {
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ function AdminConsole() {
   // Auth gate: wait for hydration; bypass for the configured admin email.
   const isAuthorized = useMemo(() => {
     if (!user) return null; // still loading
-    if (user.email?.toLowerCase() === ADMIN_BYPASS_EMAIL) return true;
+    if (user.email && ADMIN_BYPASS_EMAILS.includes(user.email.toLowerCase())) return true;
     return user.role === "admin";
   }, [user]);
 
@@ -80,7 +82,7 @@ function AdminConsole() {
         const [studentsRes, docsRes] = await Promise.all([
           supabase
             .from("profiles")
-            .select("id, email, full_name, department, created_at")
+            .select("id, email, full_name, department, college, professional_tier, created_at")
             .order("created_at", { ascending: false }),
           supabase
             .from("documents")
@@ -177,16 +179,20 @@ function AdminConsole() {
       </header>
 
       <div className="px-5 -mt-5 sticky top-0 z-20">
-        <div className="rounded-2xl bg-surface shadow-elevated p-1 grid grid-cols-3 gap-1">
+        <div className="rounded-2xl bg-surface shadow-elevated p-1 grid grid-cols-5 gap-1 overflow-x-auto">
           <TabBtn active={tab === "roster"} onClick={() => setTab("roster")} icon={<Users className="w-4 h-4" />} label="Roster" />
-          <TabBtn active={tab === "documents"} onClick={() => setTab("documents")} icon={<ShieldCheck className="w-4 h-4" />} label="Documents" />
-          <TabBtn active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
+          <TabBtn active={tab === "documents"} onClick={() => setTab("documents")} icon={<ShieldCheck className="w-4 h-4" />} label="Docs" />
+          <TabBtn active={tab === "ppts"} onClick={() => setTab("ppts")} icon={<FileText className="w-4 h-4" />} label="PPTs" />
+          <TabBtn active={tab === "broadcast"} onClick={() => setTab("broadcast")} icon={<Radio className="w-4 h-4" />} label="Broadcast" />
+          <TabBtn active={tab === "analytics"} onClick={() => setTab("analytics")} icon={<BarChart3 className="w-4 h-4" />} label="Stats" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8 animate-in fade-in duration-200" key={tab}>
         {tab === "roster" && <Roster students={students} docs={docs} onOpen={setSelectedStudent} />}
         {tab === "documents" && <DocumentsHub docs={docs} onPreview={setPreview} />}
+        {tab === "ppts" && <PPTReviewer />}
+        {tab === "broadcast" && <BroadcastPanel authorId={user.id} />}
         {tab === "analytics" && <Analytics students={students} docs={docs} authorName={user.name ?? "Admin"} />}
       </div>
 
@@ -279,33 +285,67 @@ function Roster({
         const studentDocs = docs.filter((d) => d.student_id === s.id);
         const pending = studentDocs.filter((d) => d.status === "pending").length;
         return (
-          <button
-            key={s.id}
-            onClick={() => onOpen(s)}
-            className="w-full rounded-2xl bg-surface shadow-soft p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-          >
-            <div className="w-12 h-12 rounded-2xl gradient-primary text-primary-foreground grid place-items-center font-black shrink-0">
-              {initials || "?"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">{s.full_name ?? "Unnamed student"}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{s.email}</p>
-              <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5 font-mono">UID: {s.id}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              {pending > 0 && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-warning/15 text-warning-foreground border border-warning/30">
-                  {pending} pending
+          <div key={s.id} className="rounded-2xl bg-surface shadow-soft p-4">
+            <button
+              onClick={() => onOpen(s)}
+              className="w-full flex items-center gap-3 text-left"
+            >
+              <div className="w-12 h-12 rounded-2xl gradient-primary text-primary-foreground grid place-items-center font-black shrink-0">
+                {initials || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{s.full_name ?? "Unnamed student"}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{s.email}</p>
+                <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+                  {s.college ?? "Unclassified"} · {s.department ?? "—"}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {pending > 0 && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-warning/15 text-warning-foreground border border-warning/30">
+                    {pending} pending
+                  </span>
+                )}
+                <span className="text-[11px] text-primary font-bold inline-flex items-center gap-0.5">
+                  View <ChevronRight className="w-3 h-3" />
                 </span>
-              )}
-              <span className="text-[11px] text-primary font-bold inline-flex items-center gap-0.5">
-                View <ChevronRight className="w-3 h-3" />
-              </span>
+              </div>
+            </button>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Tier</span>
+              <TierSelect
+                studentId={s.id}
+                value={(s.professional_tier ?? "Member") as "Member" | "Silver" | "Gold" | "Platinum"}
+              />
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
+  );
+}
+
+function TierSelect({ studentId, value }: { studentId: string; value: "Member" | "Silver" | "Gold" | "Platinum" }) {
+  const [v, setV] = useState(value);
+  const [busy, setBusy] = useState(false);
+  async function change(next: "Member" | "Silver" | "Gold" | "Platinum") {
+    setBusy(true);
+    const prev = v;
+    setV(next);
+    const { error } = await supabase.from("profiles").update({ professional_tier: next }).eq("id", studentId);
+    setBusy(false);
+    if (error) { toast.error(error.message); setV(prev); return; }
+    toast.success(`Tier → ${next}`);
+  }
+  return (
+    <select
+      value={v}
+      onChange={(e) => change(e.target.value as "Member" | "Silver" | "Gold" | "Platinum")}
+      disabled={busy}
+      className="h-8 px-2 rounded-lg bg-secondary text-xs font-bold outline-none"
+    >
+      {["Member", "Silver", "Gold", "Platinum"].map((t) => <option key={t} value={t}>{t}</option>)}
+    </select>
   );
 }
 
@@ -1057,9 +1097,9 @@ function buildMockSnapshot(): { students: StudentRow[]; docs: DocRow[] } {
   const now = Date.now();
   const iso = (offset: number) => new Date(now - offset).toISOString();
   const students: StudentRow[] = [
-    { id: "mock-1", email: "aria@college.edu", full_name: "Aria Mehta", department: "Computer Science", created_at: iso(86400000 * 3) },
-    { id: "mock-2", email: "rohan@college.edu", full_name: "Rohan Verma", department: "Electronics", created_at: iso(86400000 * 7) },
-    { id: "mock-3", email: "sara@college.edu", full_name: "Sara Khan", department: "Design", created_at: iso(86400000 * 12) },
+    { id: "mock-1", email: "aria@college.edu", full_name: "Aria Mehta", department: "Computer Science", college: "AKTU", professional_tier: "Silver", created_at: iso(86400000 * 3) },
+    { id: "mock-2", email: "rohan@college.edu", full_name: "Rohan Verma", department: "Electronics", college: "VSET", professional_tier: "Gold", created_at: iso(86400000 * 7) },
+    { id: "mock-3", email: "sara@college.edu", full_name: "Sara Khan", department: "Design", college: "Others", professional_tier: "Member", created_at: iso(86400000 * 12) },
   ];
   const docs: DocRow[] = [
     { id: "mock-d1", student_id: "mock-1", student_name: "Aria Mehta", document_type: "Class 10 Marksheet", file_url: "", status: "pending", created_at: iso(3600000) },
@@ -1204,3 +1244,180 @@ function LiveActivityFeed({
     </section>
   );
 }
+
+/* ============================ PPT Reviewer ============================ */
+
+interface PPTRow {
+  id: string;
+  user_id: string;
+  slot: number;
+  title: string;
+  file_path: string | null;
+  status: "Pending" | "Approved" | "Revise";
+  reviewer_notes: string | null;
+  risk_recovery: boolean;
+  created_at: string;
+  updated_at: string;
+  profiles?: { full_name: string | null; email: string | null; college: string | null } | null;
+}
+
+function PPTReviewer() {
+  const [rows, setRows] = useState<PPTRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [note, setNote] = useState<Record<string, string>>({});
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("ppt_submissions")
+      .select("id,user_id,slot,title,file_path,status,reviewer_notes,risk_recovery,created_at,updated_at")
+      .order("created_at", { ascending: false });
+    const list = (data ?? []) as PPTRow[];
+    const uids = Array.from(new Set(list.map((r) => r.user_id)));
+    if (uids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email,college").in("id", uids);
+      const map = new Map((profs ?? []).map((p) => [p.id, p]));
+      list.forEach((r) => { const p = map.get(r.user_id); if (p) r.profiles = { full_name: p.full_name, email: p.email, college: p.college }; });
+    }
+    setRows(list);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+
+  async function decide(row: PPTRow, status: "Approved" | "Revise") {
+    const { error } = await supabase
+      .from("ppt_submissions")
+      .update({ status, reviewer_notes: note[row.id] ?? row.reviewer_notes ?? null })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "Approved" ? "Approved" : "Sent back for revision");
+    load();
+  }
+
+  async function download(row: PPTRow) {
+    if (!row.file_path) return;
+    const { data } = await supabase.storage.from("student-documents").createSignedUrl(row.file_path, 60 * 60);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  }
+
+  return (
+    <div className="px-5 pt-5 space-y-3">
+      <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground">PPT Reviewer</p>
+      {loading && <p className="text-sm text-muted-foreground">Loading submissions…</p>}
+      {!loading && rows.length === 0 && (
+        <div className="rounded-2xl bg-secondary/50 p-6 text-center text-sm text-muted-foreground">No submissions yet.</div>
+      )}
+      {rows.map((r) => (
+        <div key={r.id} className="rounded-2xl bg-surface shadow-soft p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold truncate">Slot {r.slot} · {r.title}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {r.profiles?.full_name ?? r.profiles?.email ?? r.user_id} · {r.profiles?.college ?? "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                Risk & Recovery: <span className={r.risk_recovery ? "text-success font-black" : "text-destructive font-black"}>{r.risk_recovery ? "Confirmed" : "Not confirmed"}</span>
+              </p>
+            </div>
+            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${r.status === "Approved" ? "bg-success/15 text-success" : r.status === "Revise" ? "bg-destructive/15 text-destructive" : "bg-amber-100 text-amber-700"}`}>
+              {r.status}
+            </span>
+          </div>
+          <textarea
+            defaultValue={r.reviewer_notes ?? ""}
+            placeholder="Reviewer notes (optional)…"
+            onChange={(e) => setNote((n) => ({ ...n, [r.id]: e.target.value }))}
+            className="mt-3 w-full rounded-xl bg-secondary p-2.5 text-xs font-medium outline-none focus:bg-surface focus:border-primary border border-transparent"
+            rows={2}
+          />
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <button onClick={() => download(r)} disabled={!r.file_path}
+              className="h-10 rounded-xl bg-secondary text-xs font-bold disabled:opacity-40">View file</button>
+            <button onClick={() => decide(r, "Approved")}
+              className="h-10 rounded-xl bg-success text-white text-xs font-bold inline-flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Approve</button>
+            <button onClick={() => decide(r, "Revise")}
+              className="h-10 rounded-xl bg-destructive text-white text-xs font-bold inline-flex items-center justify-center gap-1"><XCircle className="w-4 h-4" /> Revise</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================ Broadcast ============================ */
+
+interface BroadcastRow { id: string; title: string; body: string; audience: string; created_at: string; }
+
+function BroadcastPanel({ authorId }: { authorId: string }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [audience, setAudience] = useState<"core" | "all">("core");
+  const [rows, setRows] = useState<BroadcastRow[]>([]);
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    const { data } = await supabase
+      .from("broadcasts").select("id,title,body,audience,created_at")
+      .order("created_at", { ascending: false }).limit(30);
+    setRows((data ?? []) as BroadcastRow[]);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function send() {
+    if (!title.trim() || !body.trim()) { toast.error("Title and body are required."); return; }
+    setSending(true);
+    const { error } = await supabase.from("broadcasts").insert({ title: title.trim(), body: body.trim(), audience, created_by: authorId });
+    setSending(false);
+    if (error) { toast.error(error.message); return; }
+    setTitle(""); setBody("");
+    toast.success("Broadcast sent");
+    load();
+  }
+
+  async function remove(id: string) {
+    const { error } = await supabase.from("broadcasts").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    load();
+  }
+
+  return (
+    <div className="px-5 pt-5 space-y-4">
+      <div className="rounded-2xl bg-surface shadow-soft p-4 space-y-3">
+        <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground flex items-center gap-1.5">
+          <Radio className="w-3.5 h-3.5" /> Send Broadcast
+        </p>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Alert title"
+          className="w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:bg-surface" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Broadcast message…" rows={3}
+          className="w-full px-3 py-2 rounded-xl bg-secondary text-sm font-medium outline-none focus:bg-surface" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setAudience("core")} className={`h-9 px-3 rounded-lg text-xs font-black ${audience === "core" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>AKTU / VSET</button>
+          <button onClick={() => setAudience("all")} className={`h-9 px-3 rounded-lg text-xs font-black ${audience === "all" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>All Users</button>
+          <button onClick={send} disabled={sending} className="ml-auto h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-xs font-black inline-flex items-center gap-1.5 disabled:opacity-60">
+            <Send className="w-4 h-4" /> {sending ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </div>
+
+      <p className="text-[11px] uppercase tracking-widest font-black text-muted-foreground">Recent</p>
+      {rows.length === 0 && <p className="text-sm text-muted-foreground">No broadcasts yet.</p>}
+      {rows.map((b) => (
+        <div key={b.id} className="rounded-2xl bg-surface shadow-soft p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold truncate">{b.title}</p>
+            <span className="text-[10px] font-black uppercase text-primary shrink-0">{b.audience}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{b.body}</p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-[10px] text-muted-foreground/70">{formatISTDateTime(b.created_at)}</p>
+            <button onClick={() => remove(b.id)} className="text-[10px] font-black uppercase text-destructive inline-flex items-center gap-1">
+              <Trash2 className="w-3 h-3" /> Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+

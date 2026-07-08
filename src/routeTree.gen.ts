@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentRouteImport } from './routes/student'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -25,6 +26,7 @@ import { Route as StudentMaterialsRouteImport } from './routes/student.materials
 import { Route as StudentExamsRouteImport } from './routes/student.exams'
 import { Route as StudentEduaiRouteImport } from './routes/student.eduai'
 import { Route as StudentDocumentsRouteImport } from './routes/student.documents'
+import { Route as StudentCompetencyRouteImport } from './routes/student.competency'
 import { Route as StudentAnnouncementsRouteImport } from './routes/student.announcements'
 import { Route as NetworkTeacherRouteImport } from './routes/network.teacher'
 import { Route as NetworkRegisterRouteImport } from './routes/network.register'
@@ -39,6 +41,11 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 const StudentRoute = StudentRouteImport.update({
   id: '/student',
   path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NetworkRoute = NetworkRouteImport.update({
@@ -116,6 +123,11 @@ const StudentDocumentsRoute = StudentDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => StudentRoute,
 } as any)
+const StudentCompetencyRoute = StudentCompetencyRouteImport.update({
+  id: '/competency',
+  path: '/competency',
+  getParentRoute: () => StudentRoute,
+} as any)
 const StudentAnnouncementsRoute = StudentAnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
@@ -176,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -185,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
   '/student/exams': typeof StudentExamsRoute
@@ -203,6 +217,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
+  '/onboarding': typeof OnboardingRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/network/admin': typeof NetworkAdminRoute
@@ -211,6 +226,7 @@ export interface FileRoutesByTo {
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
   '/student/exams': typeof StudentExamsRoute
@@ -231,6 +247,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -240,6 +257,7 @@ export interface FileRoutesById {
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
   '/student/exams': typeof StudentExamsRoute
@@ -261,6 +279,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/mcp'
     | '/network'
+    | '/onboarding'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -270,6 +289,7 @@ export interface FileRouteTypes {
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
     | '/student/exams'
@@ -288,6 +308,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/mcp'
+    | '/onboarding'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/network/admin'
@@ -296,6 +317,7 @@ export interface FileRouteTypes {
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
     | '/student/exams'
@@ -315,6 +337,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/mcp'
     | '/network'
+    | '/onboarding'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -324,6 +347,7 @@ export interface FileRouteTypes {
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
     | '/student/exams'
@@ -344,6 +368,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   McpRoute: typeof McpRoute
   NetworkRoute: typeof NetworkRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
   StudentRoute: typeof StudentRouteWithChildren
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -357,6 +382,13 @@ declare module '@tanstack/react-router' {
       path: '/student'
       fullPath: '/student'
       preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/network': {
@@ -464,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudentDocumentsRouteImport
       parentRoute: typeof StudentRoute
     }
+    '/student/competency': {
+      id: '/student/competency'
+      path: '/competency'
+      fullPath: '/student/competency'
+      preLoaderRoute: typeof StudentCompetencyRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/student/announcements': {
       id: '/student/announcements'
       path: '/announcements'
@@ -562,6 +601,7 @@ const NetworkRouteWithChildren =
 
 interface StudentRouteChildren {
   StudentAnnouncementsRoute: typeof StudentAnnouncementsRoute
+  StudentCompetencyRoute: typeof StudentCompetencyRoute
   StudentDocumentsRoute: typeof StudentDocumentsRoute
   StudentEduaiRoute: typeof StudentEduaiRoute
   StudentExamsRoute: typeof StudentExamsRoute
@@ -575,6 +615,7 @@ interface StudentRouteChildren {
 
 const StudentRouteChildren: StudentRouteChildren = {
   StudentAnnouncementsRoute: StudentAnnouncementsRoute,
+  StudentCompetencyRoute: StudentCompetencyRoute,
   StudentDocumentsRoute: StudentDocumentsRoute,
   StudentEduaiRoute: StudentEduaiRoute,
   StudentExamsRoute: StudentExamsRoute,
@@ -595,6 +636,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   McpRoute: McpRoute,
   NetworkRoute: NetworkRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
   StudentRoute: StudentRouteWithChildren,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
