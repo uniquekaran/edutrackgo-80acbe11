@@ -70,6 +70,7 @@ function OnboardingPage() {
       .eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+    setCurrentUser({ ...user, name: parsed.data.full_name, college: parsed.data.college });
     toast.success("Workspace personalized");
     navigate({ to: "/student" });
   }
