@@ -285,33 +285,67 @@ function Roster({
         const studentDocs = docs.filter((d) => d.student_id === s.id);
         const pending = studentDocs.filter((d) => d.status === "pending").length;
         return (
-          <button
-            key={s.id}
-            onClick={() => onOpen(s)}
-            className="w-full rounded-2xl bg-surface shadow-soft p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
-          >
-            <div className="w-12 h-12 rounded-2xl gradient-primary text-primary-foreground grid place-items-center font-black shrink-0">
-              {initials || "?"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">{s.full_name ?? "Unnamed student"}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{s.email}</p>
-              <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5 font-mono">UID: {s.id}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              {pending > 0 && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-warning/15 text-warning-foreground border border-warning/30">
-                  {pending} pending
+          <div key={s.id} className="rounded-2xl bg-surface shadow-soft p-4">
+            <button
+              onClick={() => onOpen(s)}
+              className="w-full flex items-center gap-3 text-left"
+            >
+              <div className="w-12 h-12 rounded-2xl gradient-primary text-primary-foreground grid place-items-center font-black shrink-0">
+                {initials || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{s.full_name ?? "Unnamed student"}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{s.email}</p>
+                <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+                  {s.college ?? "Unclassified"} · {s.department ?? "—"}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {pending > 0 && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-warning/15 text-warning-foreground border border-warning/30">
+                    {pending} pending
+                  </span>
+                )}
+                <span className="text-[11px] text-primary font-bold inline-flex items-center gap-0.5">
+                  View <ChevronRight className="w-3 h-3" />
                 </span>
-              )}
-              <span className="text-[11px] text-primary font-bold inline-flex items-center gap-0.5">
-                View <ChevronRight className="w-3 h-3" />
-              </span>
+              </div>
+            </button>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Tier</span>
+              <TierSelect
+                studentId={s.id}
+                value={(s.professional_tier ?? "Member") as "Member" | "Silver" | "Gold" | "Platinum"}
+              />
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
+  );
+}
+
+function TierSelect({ studentId, value }: { studentId: string; value: "Member" | "Silver" | "Gold" | "Platinum" }) {
+  const [v, setV] = useState(value);
+  const [busy, setBusy] = useState(false);
+  async function change(next: "Member" | "Silver" | "Gold" | "Platinum") {
+    setBusy(true);
+    const prev = v;
+    setV(next);
+    const { error } = await supabase.from("profiles").update({ professional_tier: next }).eq("id", studentId);
+    setBusy(false);
+    if (error) { toast.error(error.message); setV(prev); return; }
+    toast.success(`Tier → ${next}`);
+  }
+  return (
+    <select
+      value={v}
+      onChange={(e) => change(e.target.value as "Member" | "Silver" | "Gold" | "Platinum")}
+      disabled={busy}
+      className="h-8 px-2 rounded-lg bg-secondary text-xs font-bold outline-none"
+    >
+      {["Member", "Silver", "Gold", "Platinum"].map((t) => <option key={t} value={t}>{t}</option>)}
+    </select>
   );
 }
 
