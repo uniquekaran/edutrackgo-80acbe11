@@ -1,25 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  Menu, GraduationCap, LayoutDashboard, Sparkles, BookOpenCheck, GaugeCircle,
-  ShieldCheck, ScrollText, BookOpen, Presentation, LogOut, Users,
-} from "lucide-react";
+import { Menu, GraduationCap, LogOut, Users } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut as clearLocalUser, useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { isAdminEmail } from "@/lib/tenant";
-
-const STUDENT_ITEMS = [
-  { to: "/student" as const, label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/student/eduai" as const, label: "EduAI Assistant", icon: Sparkles },
-  { to: "/student/exams" as const, label: "Exam Portal & PYQs", icon: BookOpenCheck },
-  { to: "/student/tracker" as const, label: "Academic Tracker", icon: GaugeCircle },
-  { to: "/student/competency" as const, label: "PPT Vault", icon: Presentation },
-  { to: "/student/vault" as const, label: "Documents Vault", icon: ShieldCheck },
-  { to: "/student/noc" as const, label: "NOC Requests", icon: ScrollText },
-  { to: "/student/materials" as const, label: "Academic Portal", icon: BookOpen },
-];
+import { getMenuForUser } from "@/lib/sidebar-menu";
 
 export function MobileNavbar() {
   const [open, setOpen] = useState(false);
