@@ -1063,9 +1063,9 @@ function buildMockSnapshot(): { students: StudentRow[]; docs: DocRow[] } {
   const now = Date.now();
   const iso = (offset: number) => new Date(now - offset).toISOString();
   const students: StudentRow[] = [
-    { id: "mock-1", email: "aria@college.edu", full_name: "Aria Mehta", department: "Computer Science", created_at: iso(86400000 * 3) },
-    { id: "mock-2", email: "rohan@college.edu", full_name: "Rohan Verma", department: "Electronics", created_at: iso(86400000 * 7) },
-    { id: "mock-3", email: "sara@college.edu", full_name: "Sara Khan", department: "Design", created_at: iso(86400000 * 12) },
+    { id: "mock-1", email: "aria@college.edu", full_name: "Aria Mehta", department: "Computer Science", college: "AKTU", professional_tier: "Silver", created_at: iso(86400000 * 3) },
+    { id: "mock-2", email: "rohan@college.edu", full_name: "Rohan Verma", department: "Electronics", college: "VSET", professional_tier: "Gold", created_at: iso(86400000 * 7) },
+    { id: "mock-3", email: "sara@college.edu", full_name: "Sara Khan", department: "Design", college: "Others", professional_tier: "Member", created_at: iso(86400000 * 12) },
   ];
   const docs: DocRow[] = [
     { id: "mock-d1", student_id: "mock-1", student_name: "Aria Mehta", document_type: "Class 10 Marksheet", file_url: "", status: "pending", created_at: iso(3600000) },
