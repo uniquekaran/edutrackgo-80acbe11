@@ -13,6 +13,7 @@ import { Route as StudentRouteImport } from './routes/student'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as ManageRouteImport } from './routes/manage'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,6 +21,7 @@ import { Route as StudentIndexRouteImport } from './routes/student.index'
 import { Route as NetworkIndexRouteImport } from './routes/network.index'
 import { Route as StudentVaultRouteImport } from './routes/student.vault'
 import { Route as StudentTrackerRouteImport } from './routes/student.tracker'
+import { Route as StudentQuizRouteImport } from './routes/student.quiz'
 import { Route as StudentProfileRouteImport } from './routes/student.profile'
 import { Route as StudentNocRouteImport } from './routes/student.noc'
 import { Route as StudentMaterialsRouteImport } from './routes/student.materials'
@@ -27,12 +29,16 @@ import { Route as StudentExamsRouteImport } from './routes/student.exams'
 import { Route as StudentEduaiRouteImport } from './routes/student.eduai'
 import { Route as StudentDocumentsRouteImport } from './routes/student.documents'
 import { Route as StudentCompetencyRouteImport } from './routes/student.competency'
+import { Route as StudentCompaniesRouteImport } from './routes/student.companies'
 import { Route as StudentAnnouncementsRouteImport } from './routes/student.announcements'
 import { Route as NetworkTeacherRouteImport } from './routes/network.teacher'
 import { Route as NetworkRegisterRouteImport } from './routes/network.register'
 import { Route as NetworkPendingRouteImport } from './routes/network.pending'
 import { Route as NetworkCampusRouteImport } from './routes/network.campus'
 import { Route as NetworkAdminRouteImport } from './routes/network.admin'
+import { Route as ManageSyllabusRouteImport } from './routes/manage.syllabus'
+import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
+import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as NetworkChatPeerIdRouteImport } from './routes/network.chat.$peerId'
@@ -56,6 +62,11 @@ const NetworkRoute = NetworkRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManageRoute = ManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -93,6 +104,11 @@ const StudentTrackerRoute = StudentTrackerRouteImport.update({
   path: '/tracker',
   getParentRoute: () => StudentRoute,
 } as any)
+const StudentQuizRoute = StudentQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => StudentRoute,
+} as any)
 const StudentProfileRoute = StudentProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -128,6 +144,11 @@ const StudentCompetencyRoute = StudentCompetencyRouteImport.update({
   path: '/competency',
   getParentRoute: () => StudentRoute,
 } as any)
+const StudentCompaniesRoute = StudentCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => StudentRoute,
+} as any)
 const StudentAnnouncementsRoute = StudentAnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
@@ -158,6 +179,21 @@ const NetworkAdminRoute = NetworkAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => NetworkRoute,
 } as any)
+const ManageSyllabusRoute = ManageSyllabusRouteImport.update({
+  id: '/syllabus',
+  path: '/syllabus',
+  getParentRoute: () => ManageRoute,
+} as any)
+const ManageQuestionsRoute = ManageQuestionsRouteImport.update({
+  id: '/questions',
+  path: '/questions',
+  getParentRoute: () => ManageRoute,
+} as any)
+const ManageCompaniesRoute = ManageCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => ManageRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -186,18 +222,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/manage/companies': typeof ManageCompaniesRoute
+  '/manage/questions': typeof ManageQuestionsRoute
+  '/manage/syllabus': typeof ManageSyllabusRoute
   '/network/admin': typeof NetworkAdminRoute
   '/network/campus': typeof NetworkCampusRoute
   '/network/pending': typeof NetworkPendingRoute
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/companies': typeof StudentCompaniesRoute
   '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
@@ -205,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/student/materials': typeof StudentMaterialsRoute
   '/student/noc': typeof StudentNocRoute
   '/student/profile': typeof StudentProfileRoute
+  '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
   '/network/': typeof NetworkIndexRoute
@@ -216,16 +258,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/manage/companies': typeof ManageCompaniesRoute
+  '/manage/questions': typeof ManageQuestionsRoute
+  '/manage/syllabus': typeof ManageSyllabusRoute
   '/network/admin': typeof NetworkAdminRoute
   '/network/campus': typeof NetworkCampusRoute
   '/network/pending': typeof NetworkPendingRoute
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/companies': typeof StudentCompaniesRoute
   '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
@@ -233,6 +280,7 @@ export interface FileRoutesByTo {
   '/student/materials': typeof StudentMaterialsRoute
   '/student/noc': typeof StudentNocRoute
   '/student/profile': typeof StudentProfileRoute
+  '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
   '/network': typeof NetworkIndexRoute
@@ -245,18 +293,23 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/manage/companies': typeof ManageCompaniesRoute
+  '/manage/questions': typeof ManageQuestionsRoute
+  '/manage/syllabus': typeof ManageSyllabusRoute
   '/network/admin': typeof NetworkAdminRoute
   '/network/campus': typeof NetworkCampusRoute
   '/network/pending': typeof NetworkPendingRoute
   '/network/register': typeof NetworkRegisterRoute
   '/network/teacher': typeof NetworkTeacherRoute
   '/student/announcements': typeof StudentAnnouncementsRoute
+  '/student/companies': typeof StudentCompaniesRoute
   '/student/competency': typeof StudentCompetencyRoute
   '/student/documents': typeof StudentDocumentsRoute
   '/student/eduai': typeof StudentEduaiRoute
@@ -264,6 +317,7 @@ export interface FileRoutesById {
   '/student/materials': typeof StudentMaterialsRoute
   '/student/noc': typeof StudentNocRoute
   '/student/profile': typeof StudentProfileRoute
+  '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
   '/network/': typeof NetworkIndexRoute
@@ -277,18 +331,23 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/manage'
     | '/mcp'
     | '/network'
     | '/onboarding'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/manage/companies'
+    | '/manage/questions'
+    | '/manage/syllabus'
     | '/network/admin'
     | '/network/campus'
     | '/network/pending'
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/companies'
     | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
@@ -296,6 +355,7 @@ export interface FileRouteTypes {
     | '/student/materials'
     | '/student/noc'
     | '/student/profile'
+    | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
     | '/network/'
@@ -307,16 +367,21 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/manage'
     | '/mcp'
     | '/onboarding'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/manage/companies'
+    | '/manage/questions'
+    | '/manage/syllabus'
     | '/network/admin'
     | '/network/campus'
     | '/network/pending'
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/companies'
     | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
@@ -324,6 +389,7 @@ export interface FileRouteTypes {
     | '/student/materials'
     | '/student/noc'
     | '/student/profile'
+    | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
     | '/network'
@@ -335,18 +401,23 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/manage'
     | '/mcp'
     | '/network'
     | '/onboarding'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/manage/companies'
+    | '/manage/questions'
+    | '/manage/syllabus'
     | '/network/admin'
     | '/network/campus'
     | '/network/pending'
     | '/network/register'
     | '/network/teacher'
     | '/student/announcements'
+    | '/student/companies'
     | '/student/competency'
     | '/student/documents'
     | '/student/eduai'
@@ -354,6 +425,7 @@ export interface FileRouteTypes {
     | '/student/materials'
     | '/student/noc'
     | '/student/profile'
+    | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
     | '/network/'
@@ -366,6 +438,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  ManageRoute: typeof ManageRouteWithChildren
   McpRoute: typeof McpRoute
   NetworkRoute: typeof NetworkRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -403,6 +476,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage': {
+      id: '/manage'
+      path: '/manage'
+      fullPath: '/manage'
+      preLoaderRoute: typeof ManageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -454,6 +534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudentTrackerRouteImport
       parentRoute: typeof StudentRoute
     }
+    '/student/quiz': {
+      id: '/student/quiz'
+      path: '/quiz'
+      fullPath: '/student/quiz'
+      preLoaderRoute: typeof StudentQuizRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/student/profile': {
       id: '/student/profile'
       path: '/profile'
@@ -503,6 +590,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudentCompetencyRouteImport
       parentRoute: typeof StudentRoute
     }
+    '/student/companies': {
+      id: '/student/companies'
+      path: '/companies'
+      fullPath: '/student/companies'
+      preLoaderRoute: typeof StudentCompaniesRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/student/announcements': {
       id: '/student/announcements'
       path: '/announcements'
@@ -545,6 +639,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NetworkAdminRouteImport
       parentRoute: typeof NetworkRoute
     }
+    '/manage/syllabus': {
+      id: '/manage/syllabus'
+      path: '/syllabus'
+      fullPath: '/manage/syllabus'
+      preLoaderRoute: typeof ManageSyllabusRouteImport
+      parentRoute: typeof ManageRoute
+    }
+    '/manage/questions': {
+      id: '/manage/questions'
+      path: '/questions'
+      fullPath: '/manage/questions'
+      preLoaderRoute: typeof ManageQuestionsRouteImport
+      parentRoute: typeof ManageRoute
+    }
+    '/manage/companies': {
+      id: '/manage/companies'
+      path: '/companies'
+      fullPath: '/manage/companies'
+      preLoaderRoute: typeof ManageCompaniesRouteImport
+      parentRoute: typeof ManageRoute
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -576,6 +691,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ManageRouteChildren {
+  ManageCompaniesRoute: typeof ManageCompaniesRoute
+  ManageQuestionsRoute: typeof ManageQuestionsRoute
+  ManageSyllabusRoute: typeof ManageSyllabusRoute
+}
+
+const ManageRouteChildren: ManageRouteChildren = {
+  ManageCompaniesRoute: ManageCompaniesRoute,
+  ManageQuestionsRoute: ManageQuestionsRoute,
+  ManageSyllabusRoute: ManageSyllabusRoute,
+}
+
+const ManageRouteWithChildren =
+  ManageRoute._addFileChildren(ManageRouteChildren)
+
 interface NetworkRouteChildren {
   NetworkAdminRoute: typeof NetworkAdminRoute
   NetworkCampusRoute: typeof NetworkCampusRoute
@@ -601,6 +731,7 @@ const NetworkRouteWithChildren =
 
 interface StudentRouteChildren {
   StudentAnnouncementsRoute: typeof StudentAnnouncementsRoute
+  StudentCompaniesRoute: typeof StudentCompaniesRoute
   StudentCompetencyRoute: typeof StudentCompetencyRoute
   StudentDocumentsRoute: typeof StudentDocumentsRoute
   StudentEduaiRoute: typeof StudentEduaiRoute
@@ -608,6 +739,7 @@ interface StudentRouteChildren {
   StudentMaterialsRoute: typeof StudentMaterialsRoute
   StudentNocRoute: typeof StudentNocRoute
   StudentProfileRoute: typeof StudentProfileRoute
+  StudentQuizRoute: typeof StudentQuizRoute
   StudentTrackerRoute: typeof StudentTrackerRoute
   StudentVaultRoute: typeof StudentVaultRoute
   StudentIndexRoute: typeof StudentIndexRoute
@@ -615,6 +747,7 @@ interface StudentRouteChildren {
 
 const StudentRouteChildren: StudentRouteChildren = {
   StudentAnnouncementsRoute: StudentAnnouncementsRoute,
+  StudentCompaniesRoute: StudentCompaniesRoute,
   StudentCompetencyRoute: StudentCompetencyRoute,
   StudentDocumentsRoute: StudentDocumentsRoute,
   StudentEduaiRoute: StudentEduaiRoute,
@@ -622,6 +755,7 @@ const StudentRouteChildren: StudentRouteChildren = {
   StudentMaterialsRoute: StudentMaterialsRoute,
   StudentNocRoute: StudentNocRoute,
   StudentProfileRoute: StudentProfileRoute,
+  StudentQuizRoute: StudentQuizRoute,
   StudentTrackerRoute: StudentTrackerRoute,
   StudentVaultRoute: StudentVaultRoute,
   StudentIndexRoute: StudentIndexRoute,
@@ -634,6 +768,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  ManageRoute: ManageRouteWithChildren,
   McpRoute: McpRoute,
   NetworkRoute: NetworkRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
@@ -646,13 +781,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
