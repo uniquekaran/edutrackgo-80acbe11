@@ -35,6 +35,8 @@ interface StudentRow {
   email: string;
   full_name: string | null;
   department: string | null;
+  college: string | null;
+  professional_tier: string | null;
   created_at: string;
 }
 
