@@ -1236,12 +1236,20 @@ function PPTReviewer() {
     setLoading(true);
     const { data } = await supabase
       .from("ppt_submissions")
-      .select("id,user_id,slot,title,file_path,status,reviewer_notes,risk_recovery,created_at,updated_at, profiles:profiles!ppt_submissions_user_id_fkey(full_name,email,college)")
+      .select("id,user_id,slot,title,file_path,status,reviewer_notes,risk_recovery,created_at,updated_at")
       .order("created_at", { ascending: false });
-    setRows((data ?? []) as unknown as PPTRow[]);
+    const list = (data ?? []) as PPTRow[];
+    const uids = Array.from(new Set(list.map((r) => r.user_id)));
+    if (uids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email,college").in("id", uids);
+      const map = new Map((profs ?? []).map((p) => [p.id, p]));
+      list.forEach((r) => { const p = map.get(r.user_id); if (p) r.profiles = { full_name: p.full_name, email: p.email, college: p.college }; });
+    }
+    setRows(list);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
 
   async function decide(row: PPTRow, status: "Approved" | "Revise") {
     const { error } = await supabase
