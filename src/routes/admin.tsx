@@ -67,10 +67,14 @@ function AdminConsole() {
   }, [user]);
 
   useEffect(() => {
-    if (isAuthorized === false) {
-      navigate({ to: "/student" });
+    if (!user) {
+      navigate({ to: "/auth/admin" });
+      return;
     }
-  }, [isAuthorized, navigate]);
+    if (isAuthorized === false) {
+      navigate({ to: "/" });
+    }
+  }, [user, isAuthorized, navigate]);
 
   // Load data once authorized
   useEffect(() => {
