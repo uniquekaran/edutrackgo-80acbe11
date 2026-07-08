@@ -45,11 +45,11 @@ export function MobileNavbar() {
               </SheetTitle>
             </SheetHeader>
             <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-              {STUDENT_ITEMS.map((it) => {
+              {items.map((it, i) => {
                 const Icon = it.icon;
                 return (
                   <Link
-                    key={it.to}
+                    key={`${it.to}-${i}`}
                     to={it.to}
                     activeOptions={{ exact: it.exact }}
                     onClick={() => setOpen(false)}
