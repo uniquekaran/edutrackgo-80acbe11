@@ -32,6 +32,25 @@ function TrackerPage() {
   const maybeUser = useStore((s) => s.user);
   const attendance = useStore((s) => s.attendance);
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [doneKeys, setDoneKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!maybeUser) return;
+    (async () => {
+      const { data } = await supabase.from("user_activities").select("activity_key").eq("user_id", maybeUser.id).eq("status", "done");
+      setDoneKeys(new Set((data ?? []).map((r) => r.activity_key)));
+    })();
+  }, [maybeUser]);
+
+  async function markDone(key: string, label: string) {
+    if (!maybeUser) return;
+    const { error } = await supabase.from("user_activities").upsert({
+      user_id: maybeUser.id, activity_key: key, status: "done", completed_at: new Date().toISOString(),
+    }, { onConflict: "user_id,activity_key" });
+    if (error) return toast.error(error.message);
+    setDoneKeys((s) => new Set(s).add(key));
+    toast.success(`Marked "${label}" as done`);
+  }
 
   useEffect(() => {
     if (!maybeUser) return;
