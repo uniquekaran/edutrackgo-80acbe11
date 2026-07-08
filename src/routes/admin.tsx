@@ -19,7 +19,7 @@ import { formatISTDate, formatISTDateTime } from "@/lib/format";
 import { StatusTag, type DocStatus } from "./student.documents";
 
 
-const ADMIN_BYPASS_EMAIL = "630karan2@gmail.com";
+const ADMIN_BYPASS_EMAILS = ["vset.official@gmail.com", "630karan@gmail.com", "630karan2@gmail.com"];
 
 interface DocRow {
   id: string;
