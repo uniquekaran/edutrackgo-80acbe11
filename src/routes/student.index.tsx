@@ -9,6 +9,10 @@ import { TodoWidget } from "@/components/TodoWidget";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { SyllabusButton } from "@/components/SyllabusButton";
+import { TierBadge } from "@/components/TierBadge";
+import { CoreDashboard } from "@/components/CoreDashboard";
+import { GlobalDashboard } from "@/components/GlobalDashboard";
+import { useTenant } from "@/lib/tenant";
 
 
 
@@ -25,6 +29,7 @@ function StudentDashboard() {
   const user = useStore((s) => s.user)!;
   const attendance = useStore((s) => s.attendance);
   const [course, setCourse] = useState<string>("");
+  const { isCoreMember, tier, profile } = useTenant();
 
   useEffect(() => {
     let active = true;
@@ -74,7 +79,13 @@ function StudentDashboard() {
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-widest opacity-80">{formatISTDay(new Date())}</p>
             <h1 className="mt-1 text-2xl font-black truncate">Hi, {user.name?.split(" ")[0] ?? "there"} 👋</h1>
-            <p className="text-sm opacity-90 mt-0.5 truncate">
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+              <TierBadge tier={tier} />
+              <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                {profile?.college ?? "Unclassified"} · {isCoreMember ? "Core Committee" : "Enterprise Mode"}
+              </span>
+            </div>
+            <p className="text-sm opacity-90 mt-1 truncate">
               {course ? `${course} · Student` : (
                 <Link to="/student/profile" className="underline decoration-white/40 hover:decoration-white">Set your branch →</Link>
               )}

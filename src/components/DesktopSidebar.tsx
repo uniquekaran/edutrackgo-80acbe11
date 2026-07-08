@@ -9,18 +9,22 @@ import {
   Sparkles,
   BookOpenCheck,
   GaugeCircle,
+  Presentation,
+  Users,
 } from "lucide-react";
 import { signOut as clearLocalUser, useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { isAdminEmail } from "@/lib/tenant";
 
 const ITEMS = [
   { to: "/student" as const, label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/student/eduai" as const, label: "EduAI Assistant", icon: Sparkles },
   { to: "/student/exams" as const, label: "Exam Portal & PYQs", icon: BookOpenCheck },
   { to: "/student/tracker" as const, label: "Academic Tracker", icon: GaugeCircle },
+  { to: "/student/competency" as const, label: "PPT Vault", icon: Presentation },
   { to: "/student/vault" as const, label: "Documents Vault", icon: ShieldCheck },
   { to: "/student/noc" as const, label: "NOC Requests", icon: ScrollText },
   { to: "/student/materials" as const, label: "Academic Portal", icon: BookOpen },
@@ -65,6 +69,15 @@ export function DesktopSidebar() {
             </Link>
           );
         })}
+        {(isAdminEmail(user?.email) || user?.role === "admin") && (
+          <Link
+            to="/admin"
+            className="group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all"
+          >
+            <Users className="w-[18px] h-[18px] shrink-0" />
+            <span className="truncate">Admin Command Center</span>
+          </Link>
+        )}
       </nav>
 
       <div className="rounded-2xl glass p-3 space-y-3">

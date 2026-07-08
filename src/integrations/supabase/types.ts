@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      broadcasts: {
+        Row: {
+          audience: string
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          audience?: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       colleges: {
         Row: {
           city: string | null
@@ -275,32 +302,86 @@ export type Database = {
         }
         Relationships: []
       }
+      ppt_submissions: {
+        Row: {
+          created_at: string
+          file_path: string | null
+          id: string
+          reviewer_notes: string | null
+          risk_recovery: boolean
+          slot: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          reviewer_notes?: string | null
+          risk_recovery?: boolean
+          slot: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          reviewer_notes?: string | null
+          risk_recovery?: boolean
+          slot?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          batch: string | null
+          college: string | null
           created_at: string
           department: string | null
           email: string
           full_name: string | null
           id: string
+          onboarded_at: string | null
+          phone: string | null
+          professional_tier: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          batch?: string | null
+          college?: string | null
           created_at?: string
           department?: string | null
           email: string
           full_name?: string | null
           id: string
+          onboarded_at?: string | null
+          phone?: string | null
+          professional_tier?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          batch?: string | null
+          college?: string | null
           created_at?: string
           department?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          onboarded_at?: string | null
+          phone?: string | null
+          professional_tier?: string
           updated_at?: string
         }
         Relationships: []
