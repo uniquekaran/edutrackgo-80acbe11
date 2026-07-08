@@ -37,7 +37,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
   }
 
   const needsOnboarding = role === "student" && !adminByEmail && !profile?.college;
-  return { user: { id: userId, name, email, role, department }, needsOnboarding };
+  return { user: { id: userId, name, email, role, department, college: profile?.college ?? null }, needsOnboarding };
 }
 
 export function useSupabaseAuth() {
