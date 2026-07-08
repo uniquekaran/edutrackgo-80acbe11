@@ -39,6 +39,7 @@ import { Route as NetworkAdminRouteImport } from './routes/network.admin'
 import { Route as ManageSyllabusRouteImport } from './routes/manage.syllabus'
 import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
 import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
+import { Route as AuthAdminRouteImport } from './routes/auth.admin'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as NetworkChatPeerIdRouteImport } from './routes/network.chat.$peerId'
@@ -195,6 +196,11 @@ const ManageCompaniesRoute = ManageCompaniesRouteImport.update({
   path: '/companies',
   getParentRoute: () => ManageRoute,
 } as any)
+const AuthAdminRoute = AuthAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -227,7 +233,7 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
   '/manage/syllabus': typeof ManageSyllabusRoute
@@ -264,12 +271,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
   '/manage/syllabus': typeof ManageSyllabusRoute
@@ -300,7 +308,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
   '/manage/syllabus': typeof ManageSyllabusRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
     | '/manage/syllabus'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
     | '/manage/syllabus'
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
     | '/manage/syllabus'
@@ -449,7 +461,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   ManageRoute: typeof ManageRouteWithChildren
   McpRoute: typeof McpRoute
   NetworkRoute: typeof NetworkRouteWithChildren
@@ -673,6 +685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManageCompaniesRouteImport
       parentRoute: typeof ManageRoute
     }
+    '/auth/admin': {
+      id: '/auth/admin'
+      path: '/admin'
+      fullPath: '/auth/admin'
+      preLoaderRoute: typeof AuthAdminRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -710,6 +729,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthRouteChildren {
+  AuthAdminRoute: typeof AuthAdminRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthAdminRoute: AuthAdminRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ManageRouteChildren {
   ManageCompaniesRoute: typeof ManageCompaniesRoute
@@ -787,7 +816,7 @@ const StudentRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   ManageRoute: ManageRouteWithChildren,
   McpRoute: McpRoute,
   NetworkRoute: NetworkRouteWithChildren,

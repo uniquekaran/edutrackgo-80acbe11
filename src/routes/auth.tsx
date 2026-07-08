@@ -1,15 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock, Mail, KeyRound, X, Building2 } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
-import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
-import { CollegeSelect } from "@/components/CollegeSelect";
-
-const ADMIN_EMAIL = "630karan@gmail.com";
-const ADMIN_PASSWORD = "Karan@123";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — EduTrack" }] }),
@@ -24,11 +19,6 @@ function AuthPage() {
   const user = useStore((s) => s.user);
   const { next } = Route.useSearch();
   const [loading, setLoading] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminLoading, setAdminLoading] = useState(false);
-  const [college, setCollege] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -55,49 +45,6 @@ function AuthPage() {
     }
   }
 
-
-  async function handleAdminLogin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!college) {
-      toast.error("Please select your college first.");
-      return;
-    }
-    if (!email || !password) {
-      toast.error("Please enter both email and password.");
-      return;
-    }
-    if (email.trim().toLowerCase() !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-      toast.error("Access Denied: invalid administrator credentials.");
-      return;
-    }
-    setAdminLoading(true);
-    try {
-      try { localStorage.setItem("edutrack-admin-college", college); } catch {}
-      const { data, error } = await supabase.auth.signInWithPassword({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-      if (error || !data.user) {
-        toast.error(error?.message ?? "Invalid credentials.");
-        setAdminLoading(false);
-        return;
-      }
-      const { data: roleRow } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      if (!roleRow) {
-        await supabase.auth.signOut();
-        toast.error("Access Denied: Administrative account required");
-        setAdminLoading(false);
-        return;
-      }
-      toast.success(`Welcome back — ${college}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Login failed.");
-      setAdminLoading(false);
-    }
-  }
-
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
@@ -110,160 +57,57 @@ function AuthPage() {
           </div>
           <h1 className="text-2xl font-black">EduTrack</h1>
         </div>
-        <h2 className="mt-8 text-3xl font-black leading-tight">
-          {adminOpen ? "Administrator sign in" : "Sign in to your campus"}
-        </h2>
-        <p className="mt-2 text-sm opacity-90">
-          {adminOpen
-            ? "Staff & faculty credentials only."
-            : "One tap with Google. We'll take it from there."}
-        </p>
+        <h2 className="mt-8 text-3xl font-black leading-tight">Sign in to your campus</h2>
+        <p className="mt-2 text-sm opacity-90">One tap with Google. We'll take it from there.</p>
       </div>
 
       <div className="flex-1 px-6 -mt-6 pb-8">
-        <div className="rounded-3xl bg-surface shadow-soft p-6 relative overflow-hidden">
-          {/* Student view */}
-          <div
-            className={`transition-all duration-300 ${
-              adminOpen ? "opacity-0 -translate-y-2 pointer-events-none absolute inset-0 p-6" : "opacity-100 translate-y-0"
-            }`}
+        <div className="rounded-3xl bg-surface shadow-soft p-6">
+          <button
+            onClick={handleGoogle}
+            disabled={loading}
+            className="w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
           >
-            <button
-              onClick={handleGoogle}
-              disabled={loading}
-              className="w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Connecting…
-                </>
-              ) : (
-                <>
-                  <GoogleIcon className="w-5 h-5" />
-                  Continue with Google
-                </>
-              )}
-            </button>
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Connecting…
+              </>
+            ) : (
+              <>
+                <GoogleIcon className="w-5 h-5" />
+                Continue with Google
+              </>
+            )}
+          </button>
 
-            <div className="mt-5 flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
-              <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-foreground">Secure & private</p>
-                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                  We only access your name, email, and avatar. New accounts join as students by default.
-                </p>
-              </div>
+          <div className="mt-5 flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
+            <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-foreground">Secure & private</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                We only access your name, email, and avatar. New accounts join as students by default.
+              </p>
             </div>
-
-            <div className="mt-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Staff</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setAdminOpen(true)}
-              className="mt-4 w-full h-12 rounded-2xl border border-border bg-background flex items-center justify-center gap-2 text-sm font-semibold text-foreground hover:bg-accent/40 active:scale-[0.98] transition-all"
-            >
-              <Lock className="w-4 h-4 text-primary" />
-              Admin / Teacher Portal Login
-            </button>
-
-            <p className="mt-5 text-center text-[11px] text-muted-foreground">
-              By continuing you agree to EduTrack's Terms & Privacy.
-            </p>
           </div>
 
-          {/* Admin view */}
-          <div
-            className={`transition-all duration-300 ${
-              adminOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none absolute inset-0 p-6"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 grid place-items-center">
-                  <KeyRound className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">Admin Portal</p>
-                  <p className="text-[11px] text-muted-foreground">Restricted access</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAdminOpen(false)}
-                className="w-9 h-9 rounded-xl grid place-items-center hover:bg-accent/60 transition-colors"
-                aria-label="Back to student login"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAdminLogin} className="space-y-3">
-              <div>
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5" /> College
-                </label>
-                <div className="mt-1.5">
-                  <CollegeSelect value={college} onChange={setCollege} label="" placeholder="Select your college first…" />
-                </div>
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Email</label>
-                <div className="mt-1.5 relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@college.edu"
-                    className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
-                <div className="mt-1.5 relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={adminLoading}
-                className="w-full h-14 mt-2 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
-              >
-                {adminLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Verifying…
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-5 h-5" />
-                    Login as Admin
-                  </>
-                )}
-              </button>
-            </form>
-
-            <p className="mt-4 text-center text-[11px] text-muted-foreground leading-relaxed">
-              Administrative accounts are provisioned by your campus. Students should use Google sign-in.
-            </p>
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Staff</span>
+            <div className="h-px flex-1 bg-border" />
           </div>
+
+          <Link
+            to="/auth/admin"
+            className="mt-4 w-full h-12 rounded-2xl border border-border bg-background flex items-center justify-center gap-2 text-sm font-semibold text-foreground hover:bg-accent/40 active:scale-[0.98] transition-all"
+          >
+            <Lock className="w-4 h-4 text-primary" />
+            Admin / Teacher Portal Login
+          </Link>
+
+          <p className="mt-5 text-center text-[11px] text-muted-foreground">
+            By continuing you agree to EduTrack's Terms & Privacy.
+          </p>
         </div>
       </div>
     </MobileShell>

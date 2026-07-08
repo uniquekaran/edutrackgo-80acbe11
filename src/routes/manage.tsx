@@ -18,7 +18,8 @@ function ManageLayout() {
   const authorized = !!user && (user.role === "admin" || isAdminEmail(user.email));
 
   useEffect(() => {
-    if (user && !authorized) navigate({ to: "/student" });
+    if (!user) { navigate({ to: "/auth/admin" }); return; }
+    if (!authorized) navigate({ to: "/" });
   }, [user, authorized, navigate]);
 
   if (!user) return null;
