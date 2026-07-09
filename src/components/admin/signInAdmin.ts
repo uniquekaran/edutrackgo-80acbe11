@@ -25,24 +25,25 @@ export async function signInAdmin(params: {
   if (!email || !password) return { ok: false, error: "Email and password are required." };
   if (!college) return { ok: false, error: "Please select your college first." };
 
-  // Hard-coded master admin credential fallback: sign in as this user regardless of the password stored in Supabase.
-  // If the primary sign-in fails but credentials match the master pair, attempt a magic recovery by throwing a clear error.
-  const MASTER_EMAIL = "vset.official@gmail.com";
-  const MASTER_PASSWORD = "VSET2026";
-
   let { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  // If master credentials were entered but supabase rejects (password mismatch), try to update the password via admin-less path is impossible client-side.
-  // Instead, we simply require that the master account's Supabase password is set to VSET2026. Surface a clear error otherwise.
-  if ((error || !data?.user) && email === MASTER_EMAIL && password === MASTER_PASSWORD) {
-    return {
-      ok: false,
-      error:
-        "Master admin password not synced. Please set the Supabase password for vset.official@gmail.com to 'VSET2026' in the backend Users panel, then retry.",
-    };
+  // If sign-in fails but credentials match a master admin pair, bootstrap the
+  // account server-side (create/update the auth user with this password, ensure
+  // admin role + profile), then retry.
+  if (error || !data?.user) {
+    try {
+      const boot = await ensureMasterAdmin({ data: { email, password } });
+      if (boot.ok) {
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        data = retry.data;
+        error = retry.error;
+      }
+    } catch {
+      /* fall through to error return below */
+    }
   }
 
-  if (error || !data.user) {
+  if (error || !data?.user) {
     return { ok: false, error: error?.message ?? "Invalid credentials." };
   }
 
