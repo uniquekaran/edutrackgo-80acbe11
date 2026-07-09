@@ -9,8 +9,7 @@ import { useStore, signOut as clearLocalUser } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
+import { isAdminUser } from "@/lib/auth-helpers";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Console — EduTrack" }] }),
@@ -30,18 +29,16 @@ function AdminLayout() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const loc = useLocation();
-  const authorized = !!user && (user.email ?? "").toLowerCase() === AUTHORIZED_ADMIN_EMAIL;
+  const authorized = !!user && isAdminUser(user.email);
 
   useEffect(() => {
     if (!user) { navigate({ to: "/auth/admin" }); return; }
     if (!authorized) {
-      toast.error("Unauthorized account. Please use the official admin Google account.");
-      supabase.auth.signOut().finally(() => {
-        clearLocalUser();
-        navigate({ to: "/auth/admin" });
-      });
+      toast.error("Access denied — this area is for administrators only.");
+      navigate({ to: "/student" });
     }
   }, [user, authorized, navigate]);
+
 
   if (!user) return null;
   if (!authorized) {
