@@ -231,7 +231,10 @@ function EduAIPage() {
                       <ReactMarkdown>{m.content}</ReactMarkdown>
                     </div>
                   ) : (
-                    <TypingDots />
+                    <div className="flex items-center gap-2">
+                      <TypingDots />
+                      {slowHint && <span className="text-[11px] text-muted-foreground italic">Still thinking…</span>}
+                    </div>
                   )}
                   {m.searchStatus === "ok" && m.sources && m.sources.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-border/50">
