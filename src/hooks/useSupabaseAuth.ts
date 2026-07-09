@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { setCurrentUser, signOut as clearLocalUser, randomDepartment, store } from "@/lib/store";
 import type { User } from "@/lib/store";
 import { isAdminEmail } from "@/lib/tenant";
+
+const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
 
 interface HydrateResult {
   user: User;
