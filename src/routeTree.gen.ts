@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentRouteImport } from './routes/student'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -55,6 +56,11 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 const StudentRoute = StudentRouteImport.update({
   id: '/student',
   path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -274,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -316,6 +323,7 @@ export interface FileRoutesByTo {
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/network': typeof NetworkRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/network'
     | '/onboarding'
+    | '/reset-password'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/manage'
     | '/mcp'
     | '/onboarding'
+    | '/reset-password'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/network'
     | '/onboarding'
+    | '/reset-password'
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -536,6 +548,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   NetworkRoute: typeof NetworkRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   StudentRoute: typeof StudentRouteWithChildren
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: '/student'
       fullPath: '/student'
       preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -952,6 +972,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   NetworkRoute: NetworkRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   StudentRoute: StudentRouteWithChildren,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
