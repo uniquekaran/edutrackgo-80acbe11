@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { setCurrentUser, signOut as clearLocalUser, randomDepartment, store } from "@/lib/store";
 import type { User } from "@/lib/store";
-import { isAdminEmail } from "@/lib/tenant";
+import { isAdminUser } from "@/lib/auth-helpers";
 
-const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
+// Kept for profile-side college defaulting only. Never used to block sign-in.
+const LEGACY_MASTER_EMAILS = new Set(["vset.official@gmail.com", "630karan@gmail.com", "630karan2@gmail.com"]);
+function isLegacyMaster(email: string) { return LEGACY_MASTER_EMAILS.has(email.toLowerCase()); }
+
 
 interface HydrateResult {
   user: User;
