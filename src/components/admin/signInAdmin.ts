@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminEmail } from "@/lib/tenant";
+import { ensureMasterAdmin } from "@/lib/admin-bootstrap.functions";
 
 export interface AdminSignInResult {
   ok: boolean;
@@ -24,8 +25,25 @@ export async function signInAdmin(params: {
   if (!email || !password) return { ok: false, error: "Email and password are required." };
   if (!college) return { ok: false, error: "Please select your college first." };
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.user) {
+  let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  // If sign-in fails but credentials match a master admin pair, bootstrap the
+  // account server-side (create/update the auth user with this password, ensure
+  // admin role + profile), then retry.
+  if (error || !data?.user) {
+    try {
+      const boot = await ensureMasterAdmin({ data: { email, password } });
+      if (boot.ok) {
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        data = retry.data;
+        error = retry.error;
+      }
+    } catch {
+      /* fall through to error return below */
+    }
+  }
+
+  if (error || !data?.user) {
     return { ok: false, error: error?.message ?? "Invalid credentials." };
   }
 

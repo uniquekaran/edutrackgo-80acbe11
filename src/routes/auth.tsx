@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock, Mail, KeyRound, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/auth")({
@@ -19,6 +20,9 @@ function AuthPage() {
   const user = useStore((s) => s.user);
   const { next } = Route.useSearch();
   const [loading, setLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +47,22 @@ function AuthPage() {
       toast.error(e instanceof Error ? e.message : "Sign-in failed.");
       setLoading(false);
     }
+  }
+
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) { toast.error("Enter email and password."); return; }
+    setEmailLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) {
+      toast.error(error.message ?? "Login failed.");
+      setEmailLoading(false);
+      return;
+    }
+    // useSupabaseAuth SIGNED_IN handler will redirect.
   }
 
   return (
@@ -80,6 +100,50 @@ function AuthPage() {
               </>
             )}
           </button>
+
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Or use email</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <form onSubmit={handleEmailLogin} className="mt-4 space-y-3">
+            <div>
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Email</label>
+              <div className="mt-1.5 relative">
+                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@college.edu"
+                  className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+              <div className="mt-1.5 relative">
+                <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={emailLoading}
+              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
+            >
+              {emailLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>) : (<><LogIn className="w-4 h-4" /> Login</>)}
+            </button>
+          </form>
 
           <div className="mt-5 flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
             <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
