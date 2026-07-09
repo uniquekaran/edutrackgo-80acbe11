@@ -19,6 +19,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
 import { Route as NetworkIndexRouteImport } from './routes/network.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StudentVaultRouteImport } from './routes/student.vault'
 import { Route as StudentTrackerRouteImport } from './routes/student.tracker'
 import { Route as StudentQuizRouteImport } from './routes/student.quiz'
@@ -40,6 +41,10 @@ import { Route as ManageSyllabusRouteImport } from './routes/manage.syllabus'
 import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
 import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as AuthAdminRouteImport } from './routes/auth.admin'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminQuizRouteImport } from './routes/admin.quiz'
+import { Route as AdminDocumentsRouteImport } from './routes/admin.documents'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as NetworkChatPeerIdRouteImport } from './routes/network.chat.$peerId'
@@ -95,6 +100,11 @@ const NetworkIndexRoute = NetworkIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => NetworkRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const StudentVaultRoute = StudentVaultRouteImport.update({
   id: '/vault',
@@ -201,6 +211,26 @@ const AuthAdminRoute = AuthAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuizRoute = AdminQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDocumentsRoute = AdminDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AdminRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -232,7 +262,7 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
@@ -241,6 +271,10 @@ export interface FileRoutesByFullPath {
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -262,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin/': typeof AdminIndexRoute
   '/network/': typeof NetworkIndexRoute
   '/student/': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -270,13 +305,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -298,6 +336,7 @@ export interface FileRoutesByTo {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin': typeof AdminIndexRoute
   '/network': typeof NetworkIndexRoute
   '/student': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -307,7 +346,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
@@ -316,6 +355,10 @@ export interface FileRoutesById {
   '/student': typeof StudentRouteWithChildren
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -337,6 +380,7 @@ export interface FileRoutesById {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin/': typeof AdminIndexRoute
   '/network/': typeof NetworkIndexRoute
   '/student/': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -356,6 +400,10 @@ export interface FileRouteTypes {
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/documents'
+    | '/admin/quiz'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -377,6 +425,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin/'
     | '/network/'
     | '/student/'
     | '/.lovable/oauth/consent'
@@ -385,13 +434,16 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/auth'
     | '/manage'
     | '/mcp'
     | '/onboarding'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/documents'
+    | '/admin/quiz'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -413,6 +465,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin'
     | '/network'
     | '/student'
     | '/.lovable/oauth/consent'
@@ -430,6 +483,10 @@ export interface FileRouteTypes {
     | '/student'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/admin/documents'
+    | '/admin/quiz'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -451,6 +508,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin/'
     | '/network/'
     | '/student/'
     | '/.lovable/oauth/consent'
@@ -460,7 +518,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   ManageRoute: typeof ManageRouteWithChildren
   McpRoute: typeof McpRoute
@@ -544,6 +602,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/network/'
       preLoaderRoute: typeof NetworkIndexRouteImport
       parentRoute: typeof NetworkRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/student/vault': {
       id: '/student/vault'
@@ -692,6 +757,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAdminRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/quiz': {
+      id: '/admin/quiz'
+      path: '/quiz'
+      fullPath: '/admin/quiz'
+      preLoaderRoute: typeof AdminQuizRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/documents': {
+      id: '/admin/documents'
+      path: '/documents'
+      fullPath: '/admin/documents'
+      preLoaderRoute: typeof AdminDocumentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -729,6 +822,24 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminDocumentsRoute: typeof AdminDocumentsRoute
+  AdminQuizRoute: typeof AdminQuizRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDocumentsRoute: AdminDocumentsRoute,
+  AdminQuizRoute: AdminQuizRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AuthRouteChildren {
   AuthAdminRoute: typeof AuthAdminRoute
@@ -815,7 +926,7 @@ const StudentRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   ManageRoute: ManageRouteWithChildren,
   McpRoute: McpRoute,

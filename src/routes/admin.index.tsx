@@ -1,0 +1,115 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Users, HelpCircle, FileText, Activity, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { formatISTDateTime } from "@/lib/format";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
+
+export const Route = createFileRoute("/admin/")({
+  component: AdminDashboard,
+});
+
+interface Counts { users: number; questions: number; documents: number; syllabi: number; }
+interface Activity { id: string; label: string; at: string; }
+
+function AdminDashboard() {
+  const [counts, setCounts] = useState<Counts>({ users: 0, questions: 0, documents: 0, syllabi: 0 });
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [chart, setChart] = useState<Array<{ day: string; users: number }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      const [u, q, d, s] = await Promise.all([
+        supabase.from("profiles").select("id, created_at, full_name, email").order("created_at", { ascending: false }),
+        supabase.from("questions").select("id", { count: "exact", head: true }),
+        supabase.from("documents").select("id", { count: "exact", head: true }),
+        supabase.from("syllabi").select("id", { count: "exact", head: true }),
+      ]);
+      const users = u.data ?? [];
+      setCounts({
+        users: users.length,
+        questions: q.count ?? 0,
+        documents: d.count ?? 0,
+        syllabi: s.count ?? 0,
+      });
+      setActivity(
+        users.slice(0, 8).map((p) => ({
+          id: p.id,
+          label: `New user · ${p.full_name ?? p.email}`,
+          at: p.created_at,
+        })),
+      );
+      // Simple last-7-days signup chart
+      const byDay = new Map<string, number>();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        byDay.set(d.toISOString().slice(0, 10), 0);
+      }
+      for (const p of users) {
+        const key = p.created_at.slice(0, 10);
+        if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + 1);
+      }
+      setChart(Array.from(byDay).map(([day, users]) => ({ day: day.slice(5), users })));
+    })();
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Overview</p>
+        <h1 className="text-2xl font-black">Dashboard</h1>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Total Users" value={counts.users} icon={<Users className="w-4 h-4" />} />
+        <StatCard label="Active Quizzes" value={counts.questions} icon={<HelpCircle className="w-4 h-4" />} />
+        <StatCard label="Documents" value={counts.documents} icon={<FileText className="w-4 h-4" />} />
+        <StatCard label="Syllabi" value={counts.syllabi} icon={<Sparkles className="w-4 h-4" />} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-2xl bg-surface border border-border p-5 shadow-soft">
+          <p className="text-sm font-bold mb-3">User signups · last 7 days</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Line type="monotone" dataKey="users" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-surface border border-border p-5 shadow-soft">
+          <p className="text-sm font-bold mb-3 flex items-center gap-1.5"><Activity className="w-4 h-4" /> Latest activity</p>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {activity.length === 0 && <p className="text-xs text-muted-foreground">No recent activity.</p>}
+            {activity.map((a) => (
+              <div key={a.id} className="text-xs">
+                <p className="font-semibold truncate">{a.label}</p>
+                <p className="text-[10px] text-muted-foreground">{formatISTDateTime(a.at)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-surface border border-border p-4 shadow-soft">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {icon}
+        <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
+      </div>
+      <p className="text-3xl font-black mt-1.5">{value}</p>
+    </div>
+  );
+}
