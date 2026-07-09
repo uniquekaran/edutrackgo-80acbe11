@@ -41,17 +41,33 @@ export function StudyBuddy() {
     setMessages((m) => [...m, userMsg]);
     setText("");
     setLoading(true);
+    setSlowHint(false);
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, { id: assistantId, role: "model", text: "" }]);
+
+    const controller = new AbortController();
+    let timedOut = false;
+    const slowTimer = setTimeout(() => setSlowHint(true), SLOW_HINT_MS);
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      console.warn("[studybuddy] timeout after", REQUEST_TIMEOUT_MS, "ms");
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
+
     try {
+      console.log("[studybuddy] sending request", { turns: history.length });
       const res = await fetch("/api/eduai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history }),
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({ error: "The AI service is unavailable." }));
-        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: data.error ?? "Sorry — couldn't reach the AI." } : x));
+        const msg = data.error ?? "Sorry — couldn't reach the AI.";
+        console.error("[studybuddy] http error", res.status, msg);
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: msg } : x));
+        toast.error(msg);
         return;
       }
       const reader = res.body.getReader();
@@ -65,9 +81,15 @@ export function StudyBuddy() {
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: acc } : x));
       }
       bumpAiCounter();
-    } catch {
-      setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: "Network error — please try again." } : x));
+    } catch (e) {
+      const msg = timedOut ? TIMEOUT_MESSAGE : "Network error — please try again.";
+      console.error("[studybuddy] error", e);
+      setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: msg } : x));
+      toast.error(msg);
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
+      setSlowHint(false);
       setLoading(false);
     }
   }
