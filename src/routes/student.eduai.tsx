@@ -2,9 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Send, Bot, User as UserIcon, Globe, AlertCircle, RotateCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
+
+const REQUEST_TIMEOUT_MS = 30_000;
+const SLOW_HINT_MS = 5_000;
+const TIMEOUT_MESSAGE = "Something went wrong, please try again.";
 
 export const Route = createFileRoute("/student/eduai")({
   head: () => ({ meta: [{ title: "EduAI Assistant — EduTrack" }] }),
