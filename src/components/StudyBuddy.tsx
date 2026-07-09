@@ -156,7 +156,7 @@ export function StudyBuddy() {
                 </div>
                 <div className="bg-white/8 border border-white/10 rounded-2xl rounded-tl-md px-3 py-2 shadow">
                   <p className="text-[12px] font-medium bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent animate-pulse">
-                    EduAI soch raha hai…
+                    {slowHint ? "Still thinking…" : "EduAI soch raha hai…"}
                   </p>
                 </div>
               </div>
