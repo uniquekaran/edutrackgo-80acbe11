@@ -72,17 +72,9 @@ export function useSupabaseAuth() {
       const u = session.user;
       const email = (u.email ?? "").toLowerCase();
 
-      // Hard block: anyone who isn't the authorized admin cannot access the admin auth
-      // page or any /admin route via Google — sign them out immediately.
-      const path = window.location.pathname;
-      const onAdminSurface = path === "/auth/admin" || path.startsWith("/admin");
-      if (onAdminSurface && email !== AUTHORIZED_ADMIN_EMAIL) {
-        await supabase.auth.signOut();
-        clearLocalUser();
-        toast.error("Unauthorized account. Please use the official admin Google account.");
-        navigate({ to: "/auth/admin" });
-        return;
-      }
+      // Admin gating is enforced only on admin routes themselves (see /admin route guard
+      // and /auth/admin page). Do NOT sign users out here — student sessions (mobile OTP
+      // or Google) are always valid on non-admin surfaces.
 
       const result = await hydrateUser(
         u.id,
@@ -95,17 +87,16 @@ export function useSupabaseAuth() {
       setCurrentUser(result.user);
 
       if (result.needsOnboarding) {
-        // Force onboarding for any student without a college affiliation.
         if (window.location.pathname !== "/onboarding") {
           navigate({ to: "/onboarding" });
         }
         return;
       }
       if (opts?.redirect) {
-        const isAuthorizedAdmin = email === AUTHORIZED_ADMIN_EMAIL;
-        navigate({ to: isAuthorizedAdmin ? "/admin" : "/student" });
+        navigate({ to: result.user.role === "admin" ? "/admin" : "/student" });
       }
     };
+
 
     supabase.auth.getSession().then(({ data }) => sync(data.session));
 
