@@ -333,6 +333,3 @@ function GoogleIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
-// Suppress unused-var warning on the ref helper — kept for future analytics.
-void KeyRound;
