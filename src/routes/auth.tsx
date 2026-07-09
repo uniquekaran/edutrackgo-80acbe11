@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock, Mail, KeyRound, LogIn } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock, Mail, KeyRound, LogIn, ChevronDown, ChevronUp, Building2, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
+import { CollegeSelect } from "@/components/CollegeSelect";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
+import { signInAdmin } from "@/components/admin/signInAdmin";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — EduTrack" }] }),
