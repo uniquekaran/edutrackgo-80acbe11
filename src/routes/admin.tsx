@@ -30,11 +30,17 @@ function AdminLayout() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const loc = useLocation();
-  const authorized = !!user && (user.role === "admin" || isAdminEmail(user.email));
+  const authorized = !!user && (user.email ?? "").toLowerCase() === AUTHORIZED_ADMIN_EMAIL;
 
   useEffect(() => {
     if (!user) { navigate({ to: "/auth/admin" }); return; }
-    if (!authorized) navigate({ to: "/" });
+    if (!authorized) {
+      toast.error("Unauthorized account. Please use the official admin Google account.");
+      supabase.auth.signOut().finally(() => {
+        clearLocalUser();
+        navigate({ to: "/auth/admin" });
+      });
+    }
   }, [user, authorized, navigate]);
 
   if (!user) return null;
