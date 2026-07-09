@@ -41,6 +41,7 @@ import { Route as ManageSyllabusRouteImport } from './routes/manage.syllabus'
 import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
 import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as AuthAdminRouteImport } from './routes/auth.admin'
+import { Route as ApiEduaiRouteImport } from './routes/api/eduai'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminQuizRouteImport } from './routes/admin.quiz'
@@ -211,6 +212,11 @@ const AuthAdminRoute = AuthAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthRoute,
 } as any)
+const ApiEduaiRoute = ApiEduaiRouteImport.update({
+  id: '/api/eduai',
+  path: '/api/eduai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -275,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -359,6 +367,7 @@ export interface FileRoutesById {
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
   '/manage/questions': typeof ManageQuestionsRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
     | '/admin/quiz'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/eduai'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/admin/quiz'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/eduai'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -487,6 +498,7 @@ export interface FileRouteTypes {
     | '/admin/quiz'
     | '/admin/settings'
     | '/admin/users'
+    | '/api/eduai'
     | '/auth/admin'
     | '/manage/companies'
     | '/manage/questions'
@@ -527,6 +539,7 @@ export interface RootRouteChildren {
   StudentRoute: typeof StudentRouteWithChildren
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiEduaiRoute: typeof ApiEduaiRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
@@ -757,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAdminRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/api/eduai': {
+      id: '/api/eduai'
+      path: '/api/eduai'
+      fullPath: '/api/eduai'
+      preLoaderRoute: typeof ApiEduaiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -936,6 +956,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiEduaiRoute: ApiEduaiRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }

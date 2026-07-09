@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, X, Bot, User as UserIcon } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
-import { askEduAI } from "@/lib/eduai.functions";
 import ReactMarkdown from "react-markdown";
 
 interface Msg { id: string; role: "user" | "model"; text: string }
@@ -22,7 +20,6 @@ export function StudyBuddy() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const ask = useServerFn(askEduAI);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, open]);
 
@@ -30,21 +27,45 @@ export function StudyBuddy() {
     const value = (prompt ?? text).trim();
     if (!value || loading) return;
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", text: value };
-    const history = messages.filter((m) => m.id !== "w").map((m) => ({ role: m.role, text: m.text }));
+    const history = messages.filter((m) => m.id !== "w").map((m) => ({
+      role: m.role === "user" ? "user" as const : "assistant" as const,
+      content: m.text,
+    }));
+    history.push({ role: "user", content: value });
     setMessages((m) => [...m, userMsg]);
     setText("");
     setLoading(true);
+    const assistantId = crypto.randomUUID();
+    setMessages((m) => [...m, { id: assistantId, role: "model", text: "" }]);
     try {
-      const res = await ask({ data: { prompt: value, history } });
+      const res = await fetch("/api/eduai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history }),
+      });
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({ error: "The AI service is unavailable." }));
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: data.error ?? "Sorry — couldn't reach the AI." } : x));
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { value: chunk, done } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(chunk, { stream: true });
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: acc } : x));
+      }
       bumpAiCounter();
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "model", text: res.text }]);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Sorry — I couldn't reach the AI right now. Please try again.";
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: "model", text: msg }]);
+    } catch {
+      setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: "Network error — please try again." } : x));
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <>
