@@ -44,10 +44,12 @@ function EduAIPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const timedOutRef = useRef(false);
 
   // Load course context
   useEffect(() => {
