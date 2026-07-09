@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { streamText, type ModelMessage } from "ai";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { shouldSearchWeb, webSearch, type WebSearchResult } from "@/lib/web-search.server";
 
 interface ChatMessage {
@@ -83,40 +81,97 @@ export const Route = createFileRoute("/api/eduai")({
         const course = (body.course ?? "").trim();
         const contextLine = course ? `\n\nStudent's declared course/stream: ${course}. Tailor examples accordingly when relevant.` : "";
 
-        const modelMessages: ModelMessage[] = [
-          { role: "system", content: systemPrompt + contextLine },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
-        ];
+        // Call the Lovable AI Gateway with streaming SSE.
+        const controller = new AbortController();
+        request.signal?.addEventListener("abort", () => controller.abort());
 
+        let upstream: Response;
         try {
-          const gateway = createLovableAiGatewayProvider(key);
-          const result = streamText({
-            model: gateway("openai/gpt-5-mini"),
-            messages: modelMessages,
-            temperature: 0.6,
-          });
-
-          const sourcesHeader = sources.length
-            ? encodeURIComponent(JSON.stringify(sources.map((s) => ({ title: s.title, url: s.url }))))
-            : "";
-
-          return result.toTextStreamResponse({
+          upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            signal: controller.signal,
             headers: {
-              "X-EduAI-Search-Status": searchStatus,
-              "X-EduAI-Sources": sourcesHeader,
-              "Access-Control-Expose-Headers": "X-EduAI-Search-Status, X-EduAI-Sources",
+              "Content-Type": "application/json",
+              "Lovable-API-Key": key,
+              "X-Lovable-AIG-SDK": "vercel-ai-sdk",
             },
+            body: JSON.stringify({
+              model: "openai/gpt-5-mini",
+              stream: true,
+              messages: [
+                { role: "system", content: systemPrompt + contextLine },
+                ...messages.map((m) => ({ role: m.role, content: m.content })),
+              ],
+            }),
           });
         } catch (e) {
-          console.error("[eduai] streamText failed", e);
-          const msg = (e as Error).message ?? "";
-          const status = /402|credit/i.test(msg) ? 402 : /429|rate/i.test(msg) ? 429 : 500;
+          console.error("[eduai] upstream fetch failed", e);
+          return json({ error: "Network error reaching the AI service. Please try again." }, 502);
+        }
+
+        if (!upstream.ok || !upstream.body) {
+          const status = upstream.status;
+          const bodyText = await upstream.text().catch(() => "");
+          console.error("[eduai] upstream error", status, bodyText.slice(0, 300));
           const friendly =
             status === 402 ? "AI credits are exhausted for this workspace. Please add credits to continue."
             : status === 429 ? "Rate limit reached. Please wait a moment and try again."
+            : status === 401 || status === 403 ? "AI authorization failed on the server."
             : "The AI service is temporarily unavailable. Please try again shortly.";
-          return json({ error: friendly }, status);
+          return json({ error: friendly }, status >= 400 && status < 600 ? status : 500);
         }
+
+        // Transform OpenAI SSE stream -> plain text chunks.
+        const reader = upstream.body.getReader();
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+        let buffer = "";
+
+        const stream = new ReadableStream({
+          async pull(streamController) {
+            try {
+              const { value, done } = await reader.read();
+              if (done) {
+                streamController.close();
+                return;
+              }
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() ?? "";
+              for (const raw of lines) {
+                const line = raw.trim();
+                if (!line.startsWith("data:")) continue;
+                const payload = line.slice(5).trim();
+                if (!payload || payload === "[DONE]") continue;
+                try {
+                  const json = JSON.parse(payload) as {
+                    choices?: Array<{ delta?: { content?: string } }>;
+                  };
+                  const delta = json.choices?.[0]?.delta?.content;
+                  if (delta) streamController.enqueue(encoder.encode(delta));
+                } catch { /* ignore malformed chunk */ }
+              }
+            } catch (e) {
+              console.error("[eduai] stream read failed", e);
+              streamController.error(e);
+            }
+          },
+          cancel() { reader.cancel().catch(() => {}); },
+        });
+
+        const sourcesHeader = sources.length
+          ? encodeURIComponent(JSON.stringify(sources.map((s) => ({ title: s.title, url: s.url }))))
+          : "";
+
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            "X-EduAI-Search-Status": searchStatus,
+            "X-EduAI-Sources": sourcesHeader,
+            "Access-Control-Expose-Headers": "X-EduAI-Search-Status, X-EduAI-Sources",
+          },
+        });
       },
     },
   },
