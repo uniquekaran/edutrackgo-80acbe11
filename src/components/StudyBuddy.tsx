@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, X, Bot, User as UserIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 interface Msg { id: string; role: "user" | "model"; text: string }
+
+const REQUEST_TIMEOUT_MS = 30_000;
+const SLOW_HINT_MS = 5_000;
+const TIMEOUT_MESSAGE = "Something went wrong, please try again.";
 
 function bumpAiCounter() {
   try {
