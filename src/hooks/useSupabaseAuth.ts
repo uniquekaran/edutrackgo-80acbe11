@@ -21,7 +21,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
     supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
   ]);
 
-  const adminByEmail = isAdminEmail(email);
+  const adminByEmail = isAdminUser(email);
   const role: "admin" | "student" = roleRow || adminByEmail ? "admin" : "student";
   const name = profile?.full_name || fallbackName || email.split("@")[0];
 
@@ -31,6 +31,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
     await supabase.from("profiles").update({ department }).eq("id", userId);
   }
 
+  const legacyMaster = isLegacyMaster(email);
   if (!profile) {
     await supabase.from("profiles").upsert({
       id: userId,
@@ -38,13 +39,12 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
       full_name: name,
       avatar_url: avatarUrl ?? null,
       department: role === "student" ? randomDepartment() : null,
-      college: adminByEmail ? "AKTU" : null,
+      college: legacyMaster ? "AKTU" : null,
     });
   }
 
-  // HARD-CODED OVERRIDE: master admin accounts always get admin + AKTU college.
-  let college = profile?.college ?? (adminByEmail ? "AKTU" : null);
-  if (adminByEmail && profile?.college !== "AKTU") {
+  let college = profile?.college ?? (legacyMaster ? "AKTU" : null);
+  if (legacyMaster && profile?.college !== "AKTU") {
     await supabase.from("profiles").update({ college: "AKTU" }).eq("id", userId);
     college = "AKTU";
   }
@@ -55,6 +55,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
   const needsOnboarding = role === "student" && !adminByEmail && !college;
   return { user: { id: userId, name, email, role, department, college }, needsOnboarding };
 }
+
 
 export function useSupabaseAuth() {
   const navigate = useNavigate();
