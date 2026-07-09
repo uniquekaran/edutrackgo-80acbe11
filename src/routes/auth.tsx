@@ -202,13 +202,84 @@ function AuthPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <Link
-            to="/auth/admin"
+          <button
+            type="button"
+            onClick={() => setAdminOpen((v) => !v)}
+            aria-expanded={adminOpen}
             className="mt-4 w-full h-12 rounded-2xl border border-border bg-background flex items-center justify-center gap-2 text-sm font-semibold text-foreground hover:bg-accent/40 active:scale-[0.98] transition-all"
           >
             <Lock className="w-4 h-4 text-primary" />
             Admin / Teacher Portal Login
-          </Link>
+            {adminOpen ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+          </button>
+
+          {adminOpen && (
+            <form onSubmit={handleAdminLogin} className="mt-4 space-y-3 rounded-2xl border border-border bg-accent/20 p-4">
+              <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                <ShieldAlert className="w-3.5 h-3.5 mt-0.5 text-primary shrink-0" />
+                <span>Restricted access — staff & faculty credentials only.</span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5" /> College
+                </label>
+                <div className="mt-1.5">
+                  <CollegeSelect value={adminCollege} onChange={setAdminCollege} label="" placeholder="Select your college first…" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Admin email</label>
+                <div className="mt-1.5 relative">
+                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="admin@college.edu"
+                    className="w-full h-11 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                <div className="mt-1.5 relative">
+                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type={showAdminPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-11 pl-10 pr-11 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((v) => !v)}
+                    aria-label={showAdminPassword ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground"
+                  >
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
+              >
+                {adminLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Logging in…</>) : (<><ShieldCheck className="w-4 h-4" /> Login as Admin</>)}
+              </button>
+
+              <p className="text-center text-[11px] text-muted-foreground">
+                Prefer the full page? <Link to="/auth/admin" className="text-primary font-semibold underline">Open admin portal</Link>
+              </p>
+            </form>
+          )}
 
           <p className="mt-5 text-center text-[11px] text-muted-foreground">
             By continuing you agree to EduTrack's Terms & Privacy.
