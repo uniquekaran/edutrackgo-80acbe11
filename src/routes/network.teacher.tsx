@@ -188,16 +188,15 @@ function SyllabusPanel() {
     let active = true;
     async function load() {
       const { data } = await supabase
-        .from("learning_materials")
+        .from("syllabi")
         .select("id, title, subject, file_url, created_at")
-        .eq("module", SYLLABUS_MODULE_TAG)
         .order("created_at", { ascending: false });
       if (active) setItems((data ?? []) as SyllabusRow[]);
     }
     load();
     const ch = supabase
       .channel("teacher:syllabus")
-      .on("postgres_changes", { event: "*", schema: "public", table: "learning_materials" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "syllabi" }, () => load())
       .subscribe();
     return () => { active = false; supabase.removeChannel(ch); };
   }, []);
@@ -213,28 +212,28 @@ function SyllabusPanel() {
     }
     setBusy(true);
     try {
-      const path = `syllabus/${subject.replace(/\W+/g, "-").toLowerCase()}-${Date.now()}.pdf`;
+      const college = "AKTU";
+      const safe = subject.replace(/\W+/g, "-").toLowerCase();
+      const path = `${college}/${safe}-${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage
-        .from("student-documents")
+        .from("syllabi")
         .upload(path, file, { contentType: "application/pdf", upsert: true });
       if (upErr) throw upErr;
       const { data: signed, error: sErr } = await supabase.storage
-        .from("student-documents")
+        .from("syllabi")
         .createSignedUrl(path, 60 * 60 * 24 * 365);
       if (sErr || !signed?.signedUrl) throw sErr ?? new Error("Failed to sign URL");
 
-      // Replace existing syllabus for this subject.
-      await supabase
-        .from("learning_materials")
-        .delete()
-        .eq("module", SYLLABUS_MODULE_TAG)
-        .eq("subject", subject);
+      // Replace any existing syllabus for this subject in this college.
+      await supabase.from("syllabi").delete().eq("college", college).eq("subject", subject);
 
-      const { error: insErr } = await supabase.from("learning_materials").insert({
-        title: `${subject} — Syllabus`,
+      const { data: authData } = await supabase.auth.getUser();
+      const { error: insErr } = await supabase.from("syllabi").insert({
+        college,
         subject,
-        module: SYLLABUS_MODULE_TAG,
+        title: `${subject} — Syllabus`,
         file_url: signed.signedUrl,
+        uploaded_by: authData?.user?.id ?? null,
       });
       if (insErr) throw insErr;
       toast.success(`Syllabus published for ${subject}`);
@@ -245,10 +244,11 @@ function SyllabusPanel() {
   }
 
   async function remove(id: string) {
-    const { error } = await supabase.from("learning_materials").delete().eq("id", id);
+    const { error } = await supabase.from("syllabi").delete().eq("id", id);
     if (error) { toast.error("Delete failed"); return; }
     toast.success("Syllabus removed");
   }
+
 
   const uploaded = new Set(items.map((i) => i.subject));
 
