@@ -67,6 +67,20 @@ export function useSupabaseAuth() {
         return;
       }
       const u = session.user;
+      const email = (u.email ?? "").toLowerCase();
+
+      // Hard block: anyone who isn't the authorized admin cannot access the admin auth
+      // page or any /admin route via Google — sign them out immediately.
+      const path = window.location.pathname;
+      const onAdminSurface = path === "/auth/admin" || path.startsWith("/admin");
+      if (onAdminSurface && email !== AUTHORIZED_ADMIN_EMAIL) {
+        await supabase.auth.signOut();
+        clearLocalUser();
+        toast.error("Unauthorized account. Please use the official admin Google account.");
+        navigate({ to: "/auth/admin" });
+        return;
+      }
+
       const result = await hydrateUser(
         u.id,
         u.email ?? "",
@@ -85,7 +99,8 @@ export function useSupabaseAuth() {
         return;
       }
       if (opts?.redirect) {
-        navigate({ to: result.user.role === "admin" ? "/admin" : "/student" });
+        const isAuthorizedAdmin = email === AUTHORIZED_ADMIN_EMAIL;
+        navigate({ to: isAuthorizedAdmin ? "/admin" : "/student" });
       }
     };
 
