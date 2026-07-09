@@ -19,6 +19,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StudentIndexRouteImport } from './routes/student.index'
 import { Route as NetworkIndexRouteImport } from './routes/network.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StudentVaultRouteImport } from './routes/student.vault'
 import { Route as StudentTrackerRouteImport } from './routes/student.tracker'
 import { Route as StudentQuizRouteImport } from './routes/student.quiz'
@@ -95,6 +96,11 @@ const NetworkIndexRoute = NetworkIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => NetworkRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const StudentVaultRoute = StudentVaultRouteImport.update({
   id: '/vault',
@@ -232,7 +238,7 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin/': typeof AdminIndexRoute
   '/network/': typeof NetworkIndexRoute
   '/student/': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -270,7 +277,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
@@ -298,6 +304,7 @@ export interface FileRoutesByTo {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin': typeof AdminIndexRoute
   '/network': typeof NetworkIndexRoute
   '/student': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -307,7 +314,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/manage': typeof ManageRouteWithChildren
   '/mcp': typeof McpRoute
@@ -337,6 +344,7 @@ export interface FileRoutesById {
   '/student/quiz': typeof StudentQuizRoute
   '/student/tracker': typeof StudentTrackerRoute
   '/student/vault': typeof StudentVaultRoute
+  '/admin/': typeof AdminIndexRoute
   '/network/': typeof NetworkIndexRoute
   '/student/': typeof StudentIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -377,6 +385,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin/'
     | '/network/'
     | '/student/'
     | '/.lovable/oauth/consent'
@@ -385,7 +394,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/auth'
     | '/manage'
     | '/mcp'
@@ -413,6 +421,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin'
     | '/network'
     | '/student'
     | '/.lovable/oauth/consent'
@@ -451,6 +460,7 @@ export interface FileRouteTypes {
     | '/student/quiz'
     | '/student/tracker'
     | '/student/vault'
+    | '/admin/'
     | '/network/'
     | '/student/'
     | '/.lovable/oauth/consent'
@@ -460,7 +470,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   ManageRoute: typeof ManageRouteWithChildren
   McpRoute: typeof McpRoute
@@ -544,6 +554,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/network/'
       preLoaderRoute: typeof NetworkIndexRouteImport
       parentRoute: typeof NetworkRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/student/vault': {
       id: '/student/vault'
@@ -730,6 +747,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface AuthRouteChildren {
   AuthAdminRoute: typeof AuthAdminRoute
 }
@@ -815,7 +842,7 @@ const StudentRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   ManageRoute: ManageRouteWithChildren,
   McpRoute: McpRoute,
