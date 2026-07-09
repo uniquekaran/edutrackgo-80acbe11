@@ -25,6 +25,15 @@ function AuthPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Admin inline form state
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminCollege, setAdminCollege] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   useEffect(() => {
     if (!user) return;
