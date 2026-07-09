@@ -43,7 +43,7 @@ function AuthPage() {
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [expiresAt, setExpiresAt] = useState<number>(0);
   const [now, setNow] = useState<number>(() => Math.floor(Date.now() / 1000));
-  const nowRef = useRef(now); nowRef.current = now;
+  
 
   useEffect(() => {
     if (!user) return;
