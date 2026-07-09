@@ -16,13 +16,13 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const NAV = [
+const NAV: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/users", label: "User Profiles", icon: Users },
   { to: "/admin/documents", label: "Documents", icon: FileText },
   { to: "/admin/quiz", label: "Quiz Bank", icon: HelpCircle },
   { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
-] as const;
+];
 
 function AdminLayout() {
   const user = useStore((s) => s.user);
