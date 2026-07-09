@@ -275,7 +275,7 @@ function AuthPage() {
 
               <div>
                 <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Mobile number</label>
-                <div className="mt-1.5 h-12 px-4 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground grid place-items-start items-center flex">
+                <div className="mt-1.5 h-12 px-4 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground flex items-center">
                   +{normalizedPhone}
                 </div>
               </div>
