@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isAdminEmail } from "@/lib/tenant";
+import { ensureMasterAdmin } from "@/lib/admin-bootstrap.functions";
 
 export interface AdminSignInResult {
   ok: boolean;
