@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { setCurrentUser, signOut as clearLocalUser, randomDepartment, store } from "@/lib/store";
 import type { User } from "@/lib/store";
-import { isAdminEmail } from "@/lib/tenant";
+import { isAdminUser } from "@/lib/auth-helpers";
 
-const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
+// Kept for profile-side college defaulting only. Never used to block sign-in.
+const LEGACY_MASTER_EMAILS = new Set(["vset.official@gmail.com", "630karan@gmail.com", "630karan2@gmail.com"]);
+function isLegacyMaster(email: string) { return LEGACY_MASTER_EMAILS.has(email.toLowerCase()); }
+
 
 interface HydrateResult {
   user: User;
@@ -19,7 +21,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
     supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
   ]);
 
-  const adminByEmail = isAdminEmail(email);
+  const adminByEmail = isAdminUser(email);
   const role: "admin" | "student" = roleRow || adminByEmail ? "admin" : "student";
   const name = profile?.full_name || fallbackName || email.split("@")[0];
 
@@ -29,6 +31,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
     await supabase.from("profiles").update({ department }).eq("id", userId);
   }
 
+  const legacyMaster = isLegacyMaster(email);
   if (!profile) {
     await supabase.from("profiles").upsert({
       id: userId,
@@ -36,13 +39,12 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
       full_name: name,
       avatar_url: avatarUrl ?? null,
       department: role === "student" ? randomDepartment() : null,
-      college: adminByEmail ? "AKTU" : null,
+      college: legacyMaster ? "AKTU" : null,
     });
   }
 
-  // HARD-CODED OVERRIDE: master admin accounts always get admin + AKTU college.
-  let college = profile?.college ?? (adminByEmail ? "AKTU" : null);
-  if (adminByEmail && profile?.college !== "AKTU") {
+  let college = profile?.college ?? (legacyMaster ? "AKTU" : null);
+  if (legacyMaster && profile?.college !== "AKTU") {
     await supabase.from("profiles").update({ college: "AKTU" }).eq("id", userId);
     college = "AKTU";
   }
@@ -53,6 +55,7 @@ async function hydrateUser(userId: string, email: string, fallbackName?: string,
   const needsOnboarding = role === "student" && !adminByEmail && !college;
   return { user: { id: userId, name, email, role, department, college }, needsOnboarding };
 }
+
 
 export function useSupabaseAuth() {
   const navigate = useNavigate();
@@ -69,17 +72,9 @@ export function useSupabaseAuth() {
       const u = session.user;
       const email = (u.email ?? "").toLowerCase();
 
-      // Hard block: anyone who isn't the authorized admin cannot access the admin auth
-      // page or any /admin route via Google — sign them out immediately.
-      const path = window.location.pathname;
-      const onAdminSurface = path === "/auth/admin" || path.startsWith("/admin");
-      if (onAdminSurface && email !== AUTHORIZED_ADMIN_EMAIL) {
-        await supabase.auth.signOut();
-        clearLocalUser();
-        toast.error("Unauthorized account. Please use the official admin Google account.");
-        navigate({ to: "/auth/admin" });
-        return;
-      }
+      // Admin gating is enforced only on admin routes themselves (see /admin route guard
+      // and /auth/admin page). Do NOT sign users out here — student sessions (mobile OTP
+      // or Google) are always valid on non-admin surfaces.
 
       const result = await hydrateUser(
         u.id,
@@ -92,17 +87,16 @@ export function useSupabaseAuth() {
       setCurrentUser(result.user);
 
       if (result.needsOnboarding) {
-        // Force onboarding for any student without a college affiliation.
         if (window.location.pathname !== "/onboarding") {
           navigate({ to: "/onboarding" });
         }
         return;
       }
       if (opts?.redirect) {
-        const isAuthorizedAdmin = email === AUTHORIZED_ADMIN_EMAIL;
-        navigate({ to: isAuthorizedAdmin ? "/admin" : "/student" });
+        navigate({ to: result.user.role === "admin" ? "/admin" : "/student" });
       }
     };
+
 
     supabase.auth.getSession().then(({ data }) => sync(data.session));
 

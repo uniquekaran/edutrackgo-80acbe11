@@ -6,8 +6,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
-
-export const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
+import { isAdminUser } from "@/lib/auth-helpers";
 
 export const Route = createFileRoute("/auth/admin")({
   head: () => ({ meta: [{ title: "Administrator sign in — EduTrack" }] }),
@@ -21,22 +20,30 @@ function AdminAuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    if ((user.email ?? "").toLowerCase() === AUTHORIZED_ADMIN_EMAIL) {
+    if (isAdminUser(user.email)) {
       navigate({ to: "/admin" });
     } else {
-      // Authenticated but not authorized — hard-block from admin area.
-      supabase.auth.signOut().finally(() => {
-        toast.error("Unauthorized account. Please use the official admin Google account.");
-        navigate({ to: "/auth/admin" });
-      });
+      // Signed-in but not an admin (e.g. a student). Do NOT sign them out — just
+      // send them to the student dashboard.
+      navigate({ to: "/student" });
     }
   }, [user, navigate]);
 
   async function handleGoogle() {
+    if (loading) return;
     setLoading(true);
     try {
+      // If a non-admin session exists, sign it out first so Google can pick a new account.
+      const { data: sess } = await supabase.auth.getSession();
+      const currentEmail = sess.session?.user?.email ?? null;
+      if (currentEmail && !isAdminUser(currentEmail)) {
+        await supabase.auth.signOut();
+      }
       const redirect_uri = `${window.location.origin}/auth/admin`;
-      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri,
+        extraParams: { prompt: "select_account" },
+      });
       if (result.error) {
         toast.error(result.error.message || "Google sign-in failed.");
         setLoading(false);
@@ -48,6 +55,7 @@ function AdminAuthPage() {
       setLoading(false);
     }
   }
+
 
   return (
     <MobileShell>
