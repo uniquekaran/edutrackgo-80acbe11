@@ -4,11 +4,13 @@ import {
   LayoutDashboard, Users, FileText, HelpCircle, Settings as SettingsIcon,
   ShieldAlert, LogOut,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useStore, signOut as clearLocalUser } from "@/lib/store";
-import { isAdminEmail } from "@/lib/tenant";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Console — EduTrack" }] }),
