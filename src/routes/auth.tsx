@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Lock, Mail, KeyRound, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/auth")({
@@ -19,6 +20,9 @@ function AuthPage() {
   const user = useStore((s) => s.user);
   const { next } = Route.useSearch();
   const [loading, setLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +47,22 @@ function AuthPage() {
       toast.error(e instanceof Error ? e.message : "Sign-in failed.");
       setLoading(false);
     }
+  }
+
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) { toast.error("Enter email and password."); return; }
+    setEmailLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) {
+      toast.error(error.message ?? "Login failed.");
+      setEmailLoading(false);
+      return;
+    }
+    // useSupabaseAuth SIGNED_IN handler will redirect.
   }
 
   return (
