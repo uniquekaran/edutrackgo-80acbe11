@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { SYLLABUS_SUBJECTS, SYLLABUS_MODULE_TAG } from "@/lib/syllabus-subjects";
+import { SYLLABUS_SUBJECTS } from "@/lib/syllabus-subjects";
 import { formatISTDate } from "@/lib/format";
 
 export const Route = createFileRoute("/network/teacher")({
