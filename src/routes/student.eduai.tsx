@@ -102,11 +102,21 @@ function EduAIPage() {
     setMessages((m) => [...m, userMsg, placeholder]);
     setText("");
     setStreaming(true);
+    setSlowHint(false);
 
     const controller = new AbortController();
     abortRef.current = controller;
+    timedOutRef.current = false;
+
+    const slowTimer = setTimeout(() => setSlowHint(true), SLOW_HINT_MS);
+    const timeoutTimer = setTimeout(() => {
+      timedOutRef.current = true;
+      console.warn("[eduai] request timed out after", REQUEST_TIMEOUT_MS, "ms");
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
 
     try {
+      console.log("[eduai] sending request", { turns: history.length });
       const res = await fetch("/api/eduai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,8 +130,10 @@ function EduAIPage() {
           const data = await res.json();
           if (data?.error) msg = data.error;
         } catch { /* ignore */ }
+        console.error("[eduai] http error", res.status, msg);
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: msg, error: true } : x));
         setError(msg);
+        toast.error(msg);
         return;
       }
 
@@ -146,14 +158,24 @@ function EduAIPage() {
       setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: acc || "…", sources, searchStatus } : x));
     } catch (e: unknown) {
       const aborted = (e as { name?: string })?.name === "AbortError";
-      if (aborted) {
+      if (timedOutRef.current) {
+        console.error("[eduai] aborted due to timeout");
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: TIMEOUT_MESSAGE, error: true } : x));
+        setError(TIMEOUT_MESSAGE);
+        toast.error(TIMEOUT_MESSAGE);
+      } else if (aborted) {
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: x.content || "_Response cancelled._" } : x));
       } else {
+        console.error("[eduai] network error", e);
         const msg = "Network error — please check your connection and try again.";
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: msg, error: true } : x));
         setError(msg);
+        toast.error(msg);
       }
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
+      setSlowHint(false);
       setStreaming(false);
       abortRef.current = null;
       requestAnimationFrame(() => inputRef.current?.focus());
