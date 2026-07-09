@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, ShieldCheck, Lock, Mail, KeyRound, Building2 } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, KeyRound, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
-import { CollegeSelect } from "@/components/CollegeSelect";
+import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
-import { signInAdmin } from "@/components/admin/signInAdmin";
+
+export const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
 
 export const Route = createFileRoute("/auth/admin")({
   head: () => ({ meta: [{ title: "Administrator sign in — EduTrack" }] }),
@@ -16,29 +18,35 @@ function AdminAuthPage() {
   const navigate = useNavigate();
   const user = useStore((s) => s.user);
   const [loading, setLoading] = useState(false);
-  const [college, setCollege] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  // If a student is already signed in, kick them out of the admin auth route.
   useEffect(() => {
     if (!user) return;
-    if (user.role === "admin") navigate({ to: "/admin" });
-    else navigate({ to: "/auth" });
+    if ((user.email ?? "").toLowerCase() === AUTHORIZED_ADMIN_EMAIL) {
+      navigate({ to: "/admin" });
+    } else {
+      // Authenticated but not authorized — hard-block from admin area.
+      supabase.auth.signOut().finally(() => {
+        toast.error("Unauthorized account. Please use the official admin Google account.");
+        navigate({ to: "/auth/admin" });
+      });
+    }
   }, [user, navigate]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleGoogle() {
     setLoading(true);
-    const res = await signInAdmin({ email, password, college });
-    if (!res.ok) {
-      toast.error(res.error ?? "Login failed.");
+    try {
+      const redirect_uri = `${window.location.origin}/auth/admin`;
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
+      if (result.error) {
+        toast.error(result.error.message || "Google sign-in failed.");
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Google sign-in failed.");
       setLoading(false);
-      return;
     }
-    try { localStorage.setItem("edutrack-admin-college", college); } catch {}
-    toast.success(`Welcome back — ${college}`);
-    // useSupabaseAuth SIGNED_IN handler will redirect to /admin.
   }
 
   return (
@@ -56,75 +64,50 @@ function AdminAuthPage() {
             <h1 className="text-2xl font-black">Administrator sign in</h1>
           </div>
         </div>
-        <p className="mt-3 text-sm opacity-90">Restricted access — staff & faculty credentials only.</p>
+        <p className="mt-3 text-sm opacity-90">Restricted access — official admin Google account only.</p>
       </div>
 
       <div className="flex-1 px-6 -mt-6 pb-8">
         <div className="rounded-3xl bg-surface shadow-soft p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 grid place-items-center">
-              <Lock className="w-4 h-4 text-primary" />
-            </div>
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
+            <ShieldAlert className="w-5 h-5 text-primary mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-foreground">Admin Portal</p>
-              <p className="text-[11px] text-muted-foreground">Restricted access</p>
+              <p className="text-xs font-bold text-foreground">Google sign-in required</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                Only the authorized administrator Google account can access the console. All other accounts will be signed out automatically.
+              </p>
             </div>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-3">
-            <div>
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5" /> College
-              </label>
-              <div className="mt-1.5">
-                <CollegeSelect value={college} onChange={setCollege} label="" placeholder="Select your college first…" />
-              </div>
-            </div>
+          <button
+            onClick={handleGoogle}
+            disabled={loading}
+            className="mt-5 w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
+          >
+            {loading ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> Signing in with Google…</>
+            ) : (
+              <><GoogleIcon className="w-5 h-5" /> Continue with Google</>
+            )}
+          </button>
 
-            <div>
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Email</label>
-              <div className="mt-1.5 relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@college.edu"
-                  className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
-              <div className="mt-1.5 relative">
-                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-14 mt-2 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
-            >
-              {loading ? (<><Loader2 className="w-5 h-5 animate-spin" /> Verifying…</>) : (<><ShieldCheck className="w-5 h-5" /> Login as Admin</>)}
-            </button>
-          </form>
-
-          <p className="mt-5 text-center text-[11px] text-muted-foreground leading-relaxed">
-            Administrative accounts are provisioned by your campus. Students should use Google sign-in.
-          </p>
+          <div className="mt-5 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+            Session is verified against the authorized administrator on every request.
+          </div>
         </div>
       </div>
     </MobileShell>
+  );
+}
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="#4285F4" d="M21.6 12.227c0-.709-.064-1.39-.182-2.045H12v3.868h5.382a4.6 4.6 0 0 1-1.996 3.018v2.51h3.232c1.89-1.74 2.982-4.305 2.982-7.351Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.964-.895 6.618-2.422l-3.232-2.51c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.598-4.122H3.064v2.59A9.996 9.996 0 0 0 12 22Z" />
+      <path fill="#FBBC05" d="M6.402 13.9a6.01 6.01 0 0 1 0-3.8V7.51H3.064a10.01 10.01 0 0 0 0 8.98l3.338-2.59Z" />
+      <path fill="#EA4335" d="M12 5.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C16.96 2.99 14.695 2 12 2A9.996 9.996 0 0 0 3.064 7.51l3.338 2.59C7.19 7.737 9.395 5.977 12 5.977Z" />
+    </svg>
   );
 }

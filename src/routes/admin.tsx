@@ -4,11 +4,13 @@ import {
   LayoutDashboard, Users, FileText, HelpCircle, Settings as SettingsIcon,
   ShieldAlert, LogOut,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useStore, signOut as clearLocalUser } from "@/lib/store";
-import { isAdminEmail } from "@/lib/tenant";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const AUTHORIZED_ADMIN_EMAIL = "vset.official@gmail.com";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Console — EduTrack" }] }),
@@ -28,11 +30,17 @@ function AdminLayout() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const loc = useLocation();
-  const authorized = !!user && (user.role === "admin" || isAdminEmail(user.email));
+  const authorized = !!user && (user.email ?? "").toLowerCase() === AUTHORIZED_ADMIN_EMAIL;
 
   useEffect(() => {
     if (!user) { navigate({ to: "/auth/admin" }); return; }
-    if (!authorized) navigate({ to: "/" });
+    if (!authorized) {
+      toast.error("Unauthorized account. Please use the official admin Google account.");
+      supabase.auth.signOut().finally(() => {
+        clearLocalUser();
+        navigate({ to: "/auth/admin" });
+      });
+    }
   }, [user, authorized, navigate]);
 
   if (!user) return null;
