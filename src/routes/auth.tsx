@@ -76,6 +76,28 @@ function AuthPage() {
     // useSupabaseAuth SIGNED_IN handler will redirect.
   }
 
+  async function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!adminCollege) { toast.error("Select your college first."); return; }
+    if (!adminEmail || !adminPassword) { toast.error("Enter admin email and password."); return; }
+    setAdminLoading(true);
+    try {
+      const res = await signInAdmin({ email: adminEmail, password: adminPassword, college: adminCollege });
+      if (!res.ok) {
+        toast.error(res.error ?? "Invalid admin credentials");
+        return;
+      }
+      try { localStorage.setItem("edutrack-admin-college", adminCollege); } catch { /* noop */ }
+      toast.success(`Welcome back — ${adminCollege}`);
+      // useSupabaseAuth SIGNED_IN handler redirects to /admin.
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Invalid admin credentials");
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
