@@ -42,6 +42,7 @@ import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
 import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as AuthAdminRouteImport } from './routes/auth.admin'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminQuizRouteImport } from './routes/admin.quiz'
 import { Route as AdminDocumentsRouteImport } from './routes/admin.documents'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -215,6 +216,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminQuizRoute = AdminQuizRouteImport.update({
   id: '/quiz',
   path: '/quiz',
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -393,6 +402,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
     | '/admin/quiz'
+    | '/admin/settings'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -432,6 +442,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
     | '/admin/quiz'
+    | '/admin/settings'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
     | '/admin/quiz'
+    | '/admin/settings'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -752,6 +764,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/quiz': {
       id: '/admin/quiz'
       path: '/quiz'
@@ -807,6 +826,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminDocumentsRoute: typeof AdminDocumentsRoute
   AdminQuizRoute: typeof AdminQuizRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -814,6 +834,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDocumentsRoute: AdminDocumentsRoute,
   AdminQuizRoute: AdminQuizRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
