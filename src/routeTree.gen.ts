@@ -42,6 +42,7 @@ import { Route as ManageQuestionsRouteImport } from './routes/manage.questions'
 import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as AuthAdminRouteImport } from './routes/auth.admin'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminQuizRouteImport } from './routes/admin.quiz'
 import { Route as AdminDocumentsRouteImport } from './routes/admin.documents'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -214,6 +215,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminQuizRoute = AdminQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDocumentsRoute = AdminDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -298,6 +305,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin/documents': typeof AdminDocumentsRoute
+  '/admin/quiz': typeof AdminQuizRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/admin': typeof AuthAdminRoute
   '/manage/companies': typeof ManageCompaniesRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
+    | '/admin/quiz'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
+    | '/admin/quiz'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -462,6 +473,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin/documents'
+    | '/admin/quiz'
     | '/admin/users'
     | '/auth/admin'
     | '/manage/companies'
@@ -740,6 +752,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/quiz': {
+      id: '/admin/quiz'
+      path: '/quiz'
+      fullPath: '/admin/quiz'
+      preLoaderRoute: typeof AdminQuizRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/documents': {
       id: '/admin/documents'
       path: '/documents'
@@ -787,12 +806,14 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminDocumentsRoute: typeof AdminDocumentsRoute
+  AdminQuizRoute: typeof AdminQuizRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminDocumentsRoute: AdminDocumentsRoute,
+  AdminQuizRoute: AdminQuizRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
