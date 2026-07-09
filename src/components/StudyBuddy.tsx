@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, X, Bot, User as UserIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 interface Msg { id: string; role: "user" | "model"; text: string }
+
+const REQUEST_TIMEOUT_MS = 30_000;
+const SLOW_HINT_MS = 5_000;
+const TIMEOUT_MESSAGE = "Something went wrong, please try again.";
 
 function bumpAiCounter() {
   try {
@@ -19,6 +24,7 @@ export function StudyBuddy() {
   ]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, open]);
@@ -35,17 +41,33 @@ export function StudyBuddy() {
     setMessages((m) => [...m, userMsg]);
     setText("");
     setLoading(true);
+    setSlowHint(false);
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, { id: assistantId, role: "model", text: "" }]);
+
+    const controller = new AbortController();
+    let timedOut = false;
+    const slowTimer = setTimeout(() => setSlowHint(true), SLOW_HINT_MS);
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      console.warn("[studybuddy] timeout after", REQUEST_TIMEOUT_MS, "ms");
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
+
     try {
+      console.log("[studybuddy] sending request", { turns: history.length });
       const res = await fetch("/api/eduai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history }),
+        signal: controller.signal,
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({ error: "The AI service is unavailable." }));
-        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: data.error ?? "Sorry — couldn't reach the AI." } : x));
+        const msg = data.error ?? "Sorry — couldn't reach the AI.";
+        console.error("[studybuddy] http error", res.status, msg);
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: msg } : x));
+        toast.error(msg);
         return;
       }
       const reader = res.body.getReader();
@@ -59,9 +81,15 @@ export function StudyBuddy() {
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: acc } : x));
       }
       bumpAiCounter();
-    } catch {
-      setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: "Network error — please try again." } : x));
+    } catch (e) {
+      const msg = timedOut ? TIMEOUT_MESSAGE : "Network error — please try again.";
+      console.error("[studybuddy] error", e);
+      setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, text: msg } : x));
+      toast.error(msg);
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
+      setSlowHint(false);
       setLoading(false);
     }
   }
@@ -128,7 +156,7 @@ export function StudyBuddy() {
                 </div>
                 <div className="bg-white/8 border border-white/10 rounded-2xl rounded-tl-md px-3 py-2 shadow">
                   <p className="text-[12px] font-medium bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent animate-pulse">
-                    EduAI soch raha hai…
+                    {slowHint ? "Still thinking…" : "EduAI soch raha hai…"}
                   </p>
                 </div>
               </div>

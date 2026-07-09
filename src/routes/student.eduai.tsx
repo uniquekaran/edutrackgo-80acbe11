@@ -2,9 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Send, Bot, User as UserIcon, Globe, AlertCircle, RotateCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
+
+const REQUEST_TIMEOUT_MS = 30_000;
+const SLOW_HINT_MS = 5_000;
+const TIMEOUT_MESSAGE = "Something went wrong, please try again.";
 
 export const Route = createFileRoute("/student/eduai")({
   head: () => ({ meta: [{ title: "EduAI Assistant — EduTrack" }] }),
@@ -39,10 +44,12 @@ function EduAIPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const timedOutRef = useRef(false);
 
   // Load course context
   useEffect(() => {
@@ -95,11 +102,21 @@ function EduAIPage() {
     setMessages((m) => [...m, userMsg, placeholder]);
     setText("");
     setStreaming(true);
+    setSlowHint(false);
 
     const controller = new AbortController();
     abortRef.current = controller;
+    timedOutRef.current = false;
+
+    const slowTimer = setTimeout(() => setSlowHint(true), SLOW_HINT_MS);
+    const timeoutTimer = setTimeout(() => {
+      timedOutRef.current = true;
+      console.warn("[eduai] request timed out after", REQUEST_TIMEOUT_MS, "ms");
+      controller.abort();
+    }, REQUEST_TIMEOUT_MS);
 
     try {
+      console.log("[eduai] sending request", { turns: history.length });
       const res = await fetch("/api/eduai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,8 +130,10 @@ function EduAIPage() {
           const data = await res.json();
           if (data?.error) msg = data.error;
         } catch { /* ignore */ }
+        console.error("[eduai] http error", res.status, msg);
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: msg, error: true } : x));
         setError(msg);
+        toast.error(msg);
         return;
       }
 
@@ -139,14 +158,24 @@ function EduAIPage() {
       setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: acc || "…", sources, searchStatus } : x));
     } catch (e: unknown) {
       const aborted = (e as { name?: string })?.name === "AbortError";
-      if (aborted) {
+      if (timedOutRef.current) {
+        console.error("[eduai] aborted due to timeout");
+        setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: TIMEOUT_MESSAGE, error: true } : x));
+        setError(TIMEOUT_MESSAGE);
+        toast.error(TIMEOUT_MESSAGE);
+      } else if (aborted) {
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: x.content || "_Response cancelled._" } : x));
       } else {
+        console.error("[eduai] network error", e);
         const msg = "Network error — please check your connection and try again.";
         setMessages((m) => m.map((x) => x.id === assistantId ? { ...x, content: msg, error: true } : x));
         setError(msg);
+        toast.error(msg);
       }
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
+      setSlowHint(false);
       setStreaming(false);
       abortRef.current = null;
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -202,7 +231,10 @@ function EduAIPage() {
                       <ReactMarkdown>{m.content}</ReactMarkdown>
                     </div>
                   ) : (
-                    <TypingDots />
+                    <div className="flex items-center gap-2">
+                      <TypingDots />
+                      {slowHint && <span className="text-[11px] text-muted-foreground italic">Still thinking…</span>}
+                    </div>
                   )}
                   {m.searchStatus === "ok" && m.sources && m.sources.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-border/50">
