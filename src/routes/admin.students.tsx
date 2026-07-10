@@ -11,7 +11,8 @@ import {
   REQUIRED_DOCS, isMetaRow, latestByType, rejectionReasons,
   extractFatherPhone, extractEntranceExam,
   saveRejectionReason, clearRejectionReason,
-  type DocRow, type DocStatus,
+  saveFatherPhone, saveEntranceExam,
+  type DocRow, type DocStatus, type EntranceExam,
 } from "@/lib/student-docs";
 import { downloadStudentPackage } from "@/lib/student-report";
 
@@ -36,12 +37,15 @@ interface StudentSummary {
   rows: DocRow[];
 }
 
+type FilterKind = "all" | "pending" | "verified";
+
 function AdminStudents() {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<ProfileLite[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterKind>("all");
 
   async function load() {
     setLoading(true);
@@ -53,7 +57,6 @@ function AdminStudents() {
       ]);
       if (pErr) throw pErr;
       if (dErr) throw dErr;
-      // Only show students in the master list
       const roleMap = new Map<string, string>();
       for (const r of roles ?? []) roleMap.set(r.user_id, r.role);
       const students = (profs ?? []).filter((p) => (roleMap.get(p.id) ?? "student") === "student");
@@ -63,20 +66,49 @@ function AdminStudents() {
       toast.error((e as Error).message);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Live sync
+    const ch = supabase
+      .channel("admin-students-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
 
-  const summaries: StudentSummary[] = useMemo(() => {
+  const summaries = useMemo(() => {
     const byStudent = new Map<string, DocRow[]>();
     for (const d of docs) {
       const list = byStudent.get(d.student_id) ?? [];
       list.push(d);
       byStudent.set(d.student_id, list);
     }
-    return profiles.map((p) => ({ profile: p, rows: byStudent.get(p.id) ?? [] }))
-      .sort((a, b) => (a.profile.full_name ?? "").localeCompare(b.profile.full_name ?? ""));
+    return profiles.map((p) => {
+      const rows = byStudent.get(p.id) ?? [];
+      const uploads = latestByType(rows);
+      const fileDone = REQUIRED_DOCS.filter((it) => it.kind === "file" && uploads.get(it.key) && uploads.get(it.key)!.status !== "rejected").length;
+      const formDone =
+        (p.phone ? 1 : 0) +
+        (extractFatherPhone(rows) ? 1 : 0) +
+        ((extractEntranceExam(rows).examName || extractEntranceExam(rows).score) ? 1 : 0);
+      const done = fileDone + formDone;
+      const pendingAction = Array.from(uploads.values()).some((r) => r.status === "pending");
+      const fullyVerified = done === REQUIRED_DOCS.length &&
+        REQUIRED_DOCS.filter((it) => it.kind === "file").every((it) => uploads.get(it.key)?.status === "verified");
+      return { profile: p, rows, done, pendingAction, fullyVerified };
+    }).sort((a, b) => (a.profile.full_name ?? "").localeCompare(b.profile.full_name ?? ""));
   }, [profiles, docs]);
 
+  const counts = useMemo(() => ({
+    all: summaries.length,
+    pending: summaries.filter((s) => s.pendingAction).length,
+    verified: summaries.filter((s) => s.fullyVerified).length,
+  }), [summaries]);
+
   const filtered = summaries.filter((s) => {
+    if (filter === "pending" && !s.pendingAction) return false;
+    if (filter === "verified" && !s.fullyVerified) return false;
     if (!q) return true;
     const n = q.toLowerCase();
     return (s.profile.full_name ?? "").toLowerCase().includes(n)
@@ -85,21 +117,9 @@ function AdminStudents() {
       || s.profile.id.toLowerCase().includes(n);
   });
 
-  const totals = useMemo(() => {
-    let approved = 0, rejected = 0, pending = 0, total = 0;
-    for (const d of docs) {
-      if (isMetaRow(d)) continue;
-      total++;
-      if (d.status === "verified") approved++;
-      else if (d.status === "rejected") rejected++;
-      else pending++;
-    }
-    return { total, approved, rejected, pending };
-  }, [docs]);
-
   if (openId) {
     const s = summaries.find((x) => x.profile.id === openId);
-    if (s) return <StudentDetail summary={s} onBack={() => setOpenId(null)} onChanged={load} />;
+    if (s) return <StudentDetail summary={{ profile: s.profile, rows: s.rows }} onBack={() => setOpenId(null)} onChanged={load} />;
   }
 
   return (
@@ -110,11 +130,10 @@ function AdminStudents() {
         <p className="text-xs text-muted-foreground mt-0.5">Click any student to open their full 360° profile.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat label="Students" value={summaries.length} tone="default" icon={UsersIcon} />
-        <Stat label="Verified" value={totals.approved} tone="success" icon={CheckCircle2} />
-        <Stat label="Pending" value={totals.pending + totals.total - totals.approved - totals.rejected - totals.pending} tone="warning" icon={Clock} />
-        <Stat label="Rejected" value={totals.rejected} tone="danger" icon={XCircle} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <FilterTile active={filter === "all"} onClick={() => setFilter("all")} label="All Students" value={counts.all} tone="default" icon={UsersIcon} />
+        <FilterTile active={filter === "pending"} onClick={() => setFilter("pending")} label="Pending Action" value={counts.pending} tone="warning" icon={Clock} />
+        <FilterTile active={filter === "verified"} onClick={() => setFilter("verified")} label="Fully Verified" value={counts.verified} tone="success" icon={CheckCircle2} />
       </div>
 
       <div className="rounded-2xl bg-surface border border-border shadow-soft p-4">
@@ -136,7 +155,7 @@ function AdminStudents() {
                 <th className="text-left px-4 py-2.5 font-bold">Student</th>
                 <th className="text-left px-4 py-2.5 font-bold">Student ID</th>
                 <th className="text-left px-4 py-2.5 font-bold">Course</th>
-                <th className="text-left px-4 py-2.5 font-bold">Docs</th>
+                <th className="text-left px-4 py-2.5 font-bold">Progress</th>
                 <th className="text-left px-4 py-2.5 font-bold">Registered</th>
               </tr>
             </thead>
@@ -144,13 +163,7 @@ function AdminStudents() {
               {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">Loading…</td></tr>}
               {!loading && filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">No students found.</td></tr>}
               {filtered.map((s) => {
-                const uploads = latestByType(s.rows);
-                const doneFiles = REQUIRED_DOCS.filter((it) => it.kind === "file" && uploads.get(it.key) && uploads.get(it.key)!.status !== "rejected").length;
-                const formDone =
-                  (s.profile.phone ? 1 : 0) +
-                  (extractFatherPhone(s.rows) ? 1 : 0) +
-                  ((extractEntranceExam(s.rows).examName || extractEntranceExam(s.rows).score) ? 1 : 0);
-                const done = doneFiles + formDone;
+                const pct = Math.round((s.done / REQUIRED_DOCS.length) * 100);
                 return (
                   <tr key={s.profile.id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => setOpenId(s.profile.id)}>
                     <td className="px-4 py-3">
@@ -164,7 +177,14 @@ function AdminStudents() {
                     </td>
                     <td className="px-4 py-3 text-[11px] text-muted-foreground font-mono truncate max-w-[160px]">{s.profile.id.slice(0, 8)}…</td>
                     <td className="px-4 py-3 text-muted-foreground truncate max-w-[160px]">{s.profile.department ?? s.profile.batch ?? "—"}</td>
-                    <td className="px-4 py-3 font-bold">{done}/{REQUIRED_DOCS.length}</td>
+                    <td className="px-4 py-3 min-w-[160px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[11px] font-bold tabular-nums">{s.done}/{REQUIRED_DOCS.length}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-[11px] text-muted-foreground">{s.profile.created_at ? formatISTDate(s.profile.created_at) : "—"}</td>
                   </tr>
                 );
@@ -176,6 +196,23 @@ function AdminStudents() {
     </div>
   );
 }
+
+function FilterTile({ active, onClick, label, value, tone, icon: Icon }: { active: boolean; onClick: () => void; label: string; value: number; tone: "default" | "success" | "warning"; icon: typeof CheckCircle2 }) {
+  const toneCls = { default: "text-foreground", success: "text-success", warning: "text-warning-foreground" }[tone];
+  return (
+    <button
+      onClick={onClick}
+      className={`text-left rounded-2xl p-4 border transition-all ${active ? "bg-accent border-primary shadow-soft ring-2 ring-primary/40" : "bg-surface border-border hover:bg-accent/30"}`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <Icon className={`w-4 h-4 ${toneCls}`} />
+      </div>
+      <p className={`text-2xl font-black mt-1 ${toneCls}`}>{value}</p>
+    </button>
+  );
+}
+
 
 function Stat({ label, value, tone, icon: Icon }: { label: string; value: number; tone: "default" | "success" | "warning" | "danger"; icon: typeof CheckCircle2 }) {
   const cls = { default: "bg-secondary text-foreground", success: "bg-success/15 text-success", warning: "bg-warning/15 text-warning-foreground", danger: "bg-destructive/10 text-destructive" }[tone];
@@ -282,26 +319,14 @@ function StudentDetail({ summary, onBack, onChanged }: { summary: StudentSummary
       </div>
 
       {tab === "overview" && (
-        <div className="rounded-2xl bg-surface border border-border shadow-soft p-5 space-y-4">
-          <Section title="Personal">
-            <Info label="Full Name" v={profile.full_name ?? "—"} />
-            <Info label="Email" v={profile.email ?? "—"} />
-            <Info label="Student Mobile" v={profile.phone ?? "—"} />
-            <Info label="Father Mobile" v={fatherPhone || "—"} />
-          </Section>
-          <Section title="Academic">
-            <Info label="College" v={profile.college ?? "—"} />
-            <Info label="Course / Department" v={profile.department ?? "—"} />
-            <Info label="Batch" v={profile.batch ?? "—"} />
-          </Section>
-          <Section title="Entrance Exam">
-            <Info label="Exam Name" v={exam.examName || "—"} />
-            <Info label="Score" v={exam.score || "—"} />
-            <Info label="Rank" v={exam.rank || "—"} />
-            <Info label="Year" v={exam.year || "—"} />
-          </Section>
-        </div>
+        <OverviewTab
+          profile={profile}
+          fatherPhone={fatherPhone}
+          exam={exam}
+          onChanged={onChanged}
+        />
       )}
+
 
       {tab === "documents" && (
         <div className="rounded-2xl bg-surface border border-border shadow-soft divide-y divide-border">
@@ -483,3 +508,105 @@ function RejectDialog({ doc, onCancel, onSubmit }: { doc: DocRow; onCancel: () =
     </div>
   );
 }
+
+function OverviewTab({ profile, fatherPhone, exam, onChanged }: {
+  profile: ProfileLite;
+  fatherPhone: string;
+  exam: EntranceExam;
+  onChanged: () => void;
+}) {
+  const [studentPhone, setStudentPhone] = useState(profile.phone ?? "");
+  const [fPhone, setFPhone] = useState(fatherPhone);
+  const [ex, setEx] = useState<EntranceExam>(exam);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function savePhone() {
+    setSaving("phone");
+    try {
+      const { error } = await supabase.from("profiles").update({ phone: studentPhone.trim() || null }).eq("id", profile.id);
+      if (error) throw error;
+      toast.success("Student mobile updated");
+      onChanged();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSaving(null); }
+  }
+  async function saveFather() {
+    setSaving("father");
+    const r = await saveFatherPhone(profile.id, profile.full_name ?? "", fPhone);
+    if (!r.ok) toast.error(r.error ?? "Failed to save");
+    else { toast.success("Father mobile updated"); onChanged(); }
+    setSaving(null);
+  }
+  async function saveExam() {
+    setSaving("exam");
+    const r = await saveEntranceExam(profile.id, profile.full_name ?? "", ex);
+    if (!r.ok) toast.error(r.error ?? "Failed to save");
+    else { toast.success("Entrance exam updated"); onChanged(); }
+    setSaving(null);
+  }
+
+  const inputCls = "w-full h-10 px-3 rounded-xl bg-secondary text-sm outline-none focus:ring-2 focus:ring-primary/40";
+  const labelCls = "text-[10px] font-bold uppercase tracking-wider text-muted-foreground";
+
+  return (
+    <div className="rounded-2xl bg-surface border border-border shadow-soft p-5 space-y-6">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Personal</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Info label="Full Name" v={profile.full_name ?? "—"} />
+          <Info label="Email" v={profile.email ?? "—"} />
+          <div>
+            <label className={labelCls}>Student Mobile</label>
+            <div className="mt-1 flex gap-2">
+              <input value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} className={inputCls} placeholder="+91…" />
+              <button onClick={savePhone} disabled={saving === "phone"} className="px-3 h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save</button>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Father Mobile</label>
+            <div className="mt-1 flex gap-2">
+              <input value={fPhone} onChange={(e) => setFPhone(e.target.value)} className={inputCls} placeholder="+91…" />
+              <button onClick={saveFather} disabled={saving === "father"} className="px-3 h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Academic</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Info label="College" v={profile.college ?? "—"} />
+          <Info label="Course / Department" v={profile.department ?? "—"} />
+          <Info label="Batch" v={profile.batch ?? "—"} />
+          <Info label="Student ID" v={profile.id.slice(0, 8) + "…"} mono />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entrance Exam</p>
+          <button onClick={saveExam} disabled={saving === "exam"} className="px-3 h-9 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save Exam</button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label className={labelCls}>Exam Name</label>
+            <input value={ex.examName} onChange={(e) => setEx({ ...ex, examName: e.target.value })} className={`${inputCls} mt-1`} placeholder="JEE, NEET…" />
+          </div>
+          <div>
+            <label className={labelCls}>Score</label>
+            <input value={ex.score} onChange={(e) => setEx({ ...ex, score: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+          <div>
+            <label className={labelCls}>Rank</label>
+            <input value={ex.rank} onChange={(e) => setEx({ ...ex, rank: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+          <div>
+            <label className={labelCls}>Year</label>
+            <input value={ex.year} onChange={(e) => setEx({ ...ex, year: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
