@@ -24,11 +24,17 @@ interface DocRow {
 }
 
 const DOC_TYPES = [
-  "Class 10 Marksheet",
-  "Class 12 Marksheet",
-  "Aadhaar Card",
+  "Trust Registration Certificate",
+  "10th Original Marksheet",
+  "12th Original Marksheet",
+  "Original Aadhaar Card",
+  "Student Registered Mobile Number",
+  "Entrance Exam Scorecard / Details",
+  "Original Income Certificate",
+  "Father Mobile Number",
+  "Original Caste Certificate",
+  "Original Payment Receipt",
   "NOC (No Objection Certificate)",
-  "Other Certificates",
 ] as const;
 
 const BUCKET = "student-documents";
