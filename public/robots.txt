@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /manage
+Disallow: /student
+Disallow: /onboarding
+Disallow: /reset-password
+
+Sitemap: https://edutrackgo.lovable.app/sitemap.xml

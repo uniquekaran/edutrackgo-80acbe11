@@ -190,7 +190,7 @@ function Register() {
                   {form.receiptDataUrl ? (
                     <div className="space-y-3">
                       {form.receiptDataUrl.startsWith("data:image") ? (
-                        <img src={form.receiptDataUrl} alt="Receipt" className="max-h-52 mx-auto rounded-lg" />
+                        <img src={form.receiptDataUrl} alt="Admission fee receipt" className="max-h-52 mx-auto rounded-lg" />
                       ) : (
                         <FileText className="w-10 h-10 mx-auto text-indigo-300" />
                       )}
