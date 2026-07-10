@@ -91,16 +91,8 @@ function StudentDashboard() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle variant="onPrimary" />
-            <button
-              onClick={handleSignOut}
-              aria-label="Sign out"
-              className="w-10 h-10 rounded-xl bg-white/15 grid place-items-center active:scale-90 transition-transform"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          <div className="shrink-0" aria-hidden />
+
         </div>
       </header>
 
