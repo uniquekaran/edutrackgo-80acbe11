@@ -313,10 +313,10 @@ function EnrollmentsPanel() {
                 <p className="text-sm font-bold">{preview.fullName}</p>
                 <p className="text-xs text-white/50">{preview.receiptName}</p>
               </div>
-              <button onClick={() => setPreview(null)} className="w-8 h-8 rounded-lg bg-white/10 grid place-items-center"><X className="w-4 h-4" /></button>
+              <button onClick={() => setPreview(null)} aria-label="Close preview" className="w-8 h-8 rounded-lg bg-white/10 grid place-items-center"><X className="w-4 h-4" /></button>
             </div>
             {preview.receiptDataUrl?.startsWith("data:image") ? (
-              <img src={preview.receiptDataUrl} alt="Receipt" className="w-full rounded-lg" />
+              <img src={preview.receiptDataUrl} alt="Admission fee receipt" className="w-full rounded-lg" />
             ) : (
               <iframe src={preview.receiptDataUrl} className="w-full h-[70vh] rounded-lg bg-white" title="receipt" />
             )}

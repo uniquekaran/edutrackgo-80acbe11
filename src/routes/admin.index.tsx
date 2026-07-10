@@ -8,6 +8,13 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/admin/")({
+  head: () => ({
+    meta: [
+      { title: "Admin Dashboard — EduTrack" },
+      { name: "description", content: "Live overview of student growth, document activity, and campus operations for EduTrack administrators." },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: AdminDashboard,
 });
 

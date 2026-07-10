@@ -4,10 +4,7 @@ import { MobileShell } from "@/components/MobileShell";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: "EduTrack — Modern College Management" },
-      { name: "description", content: "Attendance, documents, and announcements for students and administrators." },
-    ],
+    links: [{ rel: "canonical", href: "https://edutrackgo.lovable.app/" }],
   }),
   component: Welcome,
 });
@@ -25,7 +22,8 @@ function Welcome() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.2em] opacity-80">College OS</p>
-            <h1 className="text-xl font-black">EduTrack</h1>
+            <h1 className="text-xl font-black">EduTrack — Modern College Management</h1>
+
           </div>
         </div>
 

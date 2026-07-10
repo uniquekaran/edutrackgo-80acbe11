@@ -89,15 +89,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "EduTrack — Modern College Management" },
       { name: "description", content: "Attendance, documents, and announcements for students and administrators." },
       { name: "author", content: "EduTrack" },
+      { property: "og:site_name", content: "EduTrack" },
       { property: "og:title", content: "EduTrack — Modern College Management" },
       { property: "og:description", content: "Attendance, documents, and announcements for students and administrators." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://edutrackgo.lovable.app/" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "EduTrack — Modern College Management" },
       { name: "twitter:description", content: "Attendance, documents, and announcements for students and administrators." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/f4049d0f-8521-4291-bf0b-6d4eaf217d1b" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/f4049d0f-8521-4291-bf0b-6d4eaf217d1b" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -112,6 +112,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap",
       },
     ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "EduTrack",
+              url: "https://edutrackgo.lovable.app/",
+              logo: "https://edutrackgo.lovable.app/icon-512.png",
+            },
+            {
+              "@type": "WebSite",
+              name: "EduTrack",
+              url: "https://edutrackgo.lovable.app/",
+            },
+          ],
+        }),
+      },
+    ],
+
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -140,7 +162,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthBridge />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );

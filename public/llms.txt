@@ -1,0 +1,12 @@
+# EduTrack
+
+> Modern college management platform for attendance, document verification, announcements, and campus networking — built for students and administrators.
+
+EduTrack is a mobile-first College OS that unifies student document vaults, attendance tracking, entrance-exam records, and college-wide broadcasts in one app. Administrators verify records, run quizzes, and manage syllabi; students track their own progress and connect through the EduAI Network.
+
+## Pages
+
+- [Home](/): Overview of EduTrack and links to sign in or explore the network.
+- [Sign in](/auth): Student mobile-OTP login and admin/teacher sign in.
+- [EduAI Network](/network): Campus networking and directory for verified users.
+- [Join the Network](/network/register): Enrollment request flow for new users.

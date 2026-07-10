@@ -9,7 +9,16 @@ import { setCurrentUser, useStore } from "@/lib/store";
 import { sendOtp, verifyOtp } from "@/lib/otp.functions";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — EduTrack" }] }),
+  head: () => ({
+    meta: [
+      { title: "Sign in — EduTrack" },
+      { name: "description", content: "Sign in to EduTrack with your mobile number, or use admin/teacher access to manage your campus." },
+      { property: "og:title", content: "Sign in — EduTrack" },
+      { property: "og:description", content: "Sign in to EduTrack with your mobile number, or use admin/teacher access to manage your campus." },
+      { property: "og:url", content: "https://edutrackgo.lovable.app/auth" },
+    ],
+    links: [{ rel: "canonical", href: "https://edutrackgo.lovable.app/auth" }],
+  }),
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : "",
   }),
@@ -194,7 +203,7 @@ function AuthPage() {
           <div className="w-10 h-10 rounded-xl bg-white/15 grid place-items-center">
             <GraduationCap className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-black">EduTrack</h1>
+          <h1 className="text-2xl font-black">EduTrack — Modern College Management</h1>
         </div>
         <h2 className="mt-8 text-3xl font-black leading-tight">
           {step === "verify-otp"
