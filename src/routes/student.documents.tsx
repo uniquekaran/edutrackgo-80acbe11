@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, Trash2, RefreshCw, Phone, GraduationCap, Save,
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
