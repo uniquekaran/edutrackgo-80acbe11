@@ -16,7 +16,10 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Step = "enter-phone" | "verify-otp";
+type Step = "enter-phone" | "verify-otp" | "admin-login";
+
+const ADMIN_EMAIL = "vset.official@gmail.com";
+const ADMIN_PASSWORD = "VSET2026";
 
 function friendly(msg?: string | null): string {
   const m = (msg ?? "").toLowerCase();
