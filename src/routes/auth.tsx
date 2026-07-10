@@ -197,11 +197,17 @@ function AuthPage() {
           <h1 className="text-2xl font-black">EduTrack</h1>
         </div>
         <h2 className="mt-8 text-3xl font-black leading-tight">
-          {step === "verify-otp" ? "Verify your mobile" : "Sign in to your campus"}
+          {step === "verify-otp"
+            ? "Verify your mobile"
+            : step === "admin-login"
+            ? "Admin / Teacher sign in"
+            : "Sign in to your campus"}
         </h2>
         <p className="mt-2 text-sm opacity-90">
           {step === "verify-otp"
             ? `We sent a 6-digit code to +${normalizedPhone}.`
+            : step === "admin-login"
+            ? "Restricted access — authorized staff accounts only."
             : "Continue with Google, or use your mobile number."}
         </p>
       </div>
