@@ -307,6 +307,72 @@ function AuthPage() {
                 By continuing you agree to EduTrack's Terms & Privacy.
               </p>
             </>
+          ) : step === "admin-login" ? (
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
+                <KeyRound className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Staff portal</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                    Sign in with your administrator email and password.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Email address</label>
+                <div className="mt-1.5 relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    disabled={adminLoading}
+                    className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="admin@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Password</label>
+                <div className="mt-1.5 relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type={showAdminPw ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    disabled={adminLoading}
+                    className="w-full h-12 pl-10 pr-10 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-muted-foreground rounded-lg hover:bg-accent/50"
+                    aria-label={showAdminPw ? "Hide password" : "Show password"}
+                  >
+                    {showAdminPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
+              >
+                {adminLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>) : (<><ShieldCheck className="w-4 h-4" /> Login as Admin</>)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("enter-phone")}
+                className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground font-semibold"
+              >
+                ← Back to student sign in
+              </button>
+            </form>
           ) : (
             <form onSubmit={handleVerify} className="space-y-3">
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
