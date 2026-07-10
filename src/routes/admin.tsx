@@ -20,6 +20,7 @@ export const Route = createFileRoute("/admin")({
 const NAV: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/users", label: "User Profiles", icon: Users },
+  { to: "/admin/students", label: "Student Docs", icon: FileText },
   { to: "/admin/documents", label: "Documents", icon: FileText },
   { to: "/admin/quiz", label: "Quiz Bank", icon: HelpCircle },
   { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
