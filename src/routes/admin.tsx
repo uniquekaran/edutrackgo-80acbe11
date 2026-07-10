@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileText, HelpCircle, Settings as SettingsIcon,
   ShieldAlert, LogOut,
