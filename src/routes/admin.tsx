@@ -30,24 +30,56 @@ function AdminLayout() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const loc = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
   const authorized = !!user && isAdminUser(user.email);
 
+  // Wait for Supabase session hydration before deciding access.
   useEffect(() => {
-    if (!user) { navigate({ to: "/auth/admin" }); return; }
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setHasSession(!!data.session);
+      setChecking(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setHasSession(!!session);
+      setChecking(false);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (checking) return;
+    if (!hasSession && !user) {
+      navigate({ to: "/auth/admin" });
+      return;
+    }
+    if (!user) return; // session exists, waiting for store hydration
     if (!authorized) {
       toast.error("Access denied — this area is for administrators only.");
-      navigate({ to: "/student" });
+      navigate({ to: "/auth/admin" });
     }
-  }, [user, authorized, navigate]);
+  }, [checking, hasSession, user, authorized, navigate]);
 
+  if (checking || (hasSession && !user)) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="text-center space-y-2">
+          <div className="w-10 h-10 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-xs uppercase tracking-widest text-muted-foreground font-black">Loading admin console…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) return null;
   if (!authorized) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <ShieldAlert className="w-10 h-10 mx-auto text-destructive" />
-          <p className="text-sm font-bold mt-2">Admins only</p>
+          <p className="text-sm font-bold">Redirecting…</p>
         </div>
       </div>
     );
