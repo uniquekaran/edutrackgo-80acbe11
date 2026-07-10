@@ -38,33 +38,91 @@ interface StudentSummary {
 }
 
 type FilterKind = "all" | "pending" | "verified";
+type DbDiagnostic = { source: "profiles" | "documents" | "client"; level: "error" | "warning"; message: string };
+
+function formatDbError(source: "profiles" | "documents", error: unknown) {
+  const err = error as { message?: string; code?: string; details?: string; hint?: string };
+  return [
+    `${source} error: ${err.message ?? String(error)}`,
+    err.code ? `code=${err.code}` : "",
+    err.details ? `details=${err.details}` : "",
+    err.hint ? `hint=${err.hint}` : "",
+  ].filter(Boolean).join(" · ");
+}
 
 function AdminStudents() {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<ProfileLite[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
+  const [diagnostics, setDiagnostics] = useState<DbDiagnostic[]>([]);
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKind>("all");
 
   async function load() {
     setLoading(true);
+    const nextDiagnostics: DbDiagnostic[] = [];
+
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+      nextDiagnostics.push({
+        source: "client",
+        level: "error",
+        message: "client error: Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. The browser client cannot connect to the configured production backend.",
+      });
+    }
+
     try {
-      const [{ data: profs, error: pErr }, { data: docsData, error: dErr }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("id, email, full_name, phone, college, department, batch, avatar_url, created_at"),
-        supabase.from("documents").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      if (pErr) throw pErr;
-      if (dErr) throw dErr;
-      const roleMap = new Map<string, string>();
-      for (const r of roles ?? []) roleMap.set(r.user_id, r.role);
-      const students = (profs ?? []).filter((p) => (roleMap.get(p.id) ?? "student") === "student");
-      setProfiles(students as ProfileLite[]);
-      setDocs((docsData ?? []) as DocRow[]);
+      const { data: profs, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, phone, college, department, batch, avatar_url, created_at");
+
+      if (pErr) {
+        nextDiagnostics.push({ source: "profiles", level: "error", message: formatDbError("profiles", pErr) });
+        setProfiles([]);
+      } else {
+        const allProfiles = (profs ?? []) as ProfileLite[];
+        if (allProfiles.length === 0) {
+          nextDiagnostics.push({
+            source: "profiles",
+            level: "warning",
+            message: "Connection Warning: profiles query returned 0 rows. No frontend role filters were applied.",
+          });
+        }
+        setProfiles(allProfiles);
+      }
     } catch (e) {
-      toast.error((e as Error).message);
-    } finally { setLoading(false); }
+      nextDiagnostics.push({ source: "profiles", level: "error", message: formatDbError("profiles", e) });
+      setProfiles([]);
+    }
+
+    try {
+      const { data: docsData, error: dErr } = await supabase
+        .from("documents")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (dErr) {
+        nextDiagnostics.push({ source: "documents", level: "error", message: formatDbError("documents", dErr) });
+        setDocs([]);
+      } else {
+        const allDocs = (docsData ?? []) as DocRow[];
+        if (allDocs.length === 0) {
+          nextDiagnostics.push({
+            source: "documents",
+            level: "warning",
+            message: "Connection Warning: documents query returned 0 rows. Student profiles will still render if profiles exist.",
+          });
+        }
+        setDocs(allDocs);
+      }
+    } catch (e) {
+      nextDiagnostics.push({ source: "documents", level: "error", message: formatDbError("documents", e) });
+      setDocs([]);
+    } finally {
+      setDiagnostics(nextDiagnostics);
+      if (nextDiagnostics.some((item) => item.level === "error")) toast.error("Database error visible on screen.");
+      setLoading(false);
+    }
   }
   useEffect(() => {
     load();
@@ -129,6 +187,20 @@ function AdminStudents() {
         <h1 className="text-2xl font-black">Master Student List</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Click any student to open their full 360° profile.</p>
       </div>
+
+      {diagnostics.length > 0 && (
+        <div className="rounded-2xl bg-surface border border-border shadow-soft p-4 space-y-2">
+          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Database diagnostics</p>
+          {diagnostics.map((item, index) => (
+            <div
+              key={`${item.source}-${index}`}
+              className={`rounded-xl border p-3 text-xs font-semibold ${item.level === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/10 text-warning-foreground"}`}
+            >
+              {item.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <FilterTile active={filter === "all"} onClick={() => setFilter("all")} label="All Students" value={counts.all} tone="default" icon={UsersIcon} />
