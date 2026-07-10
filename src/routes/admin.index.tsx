@@ -20,7 +20,7 @@ function AdminDashboard() {
   const [chart, setChart] = useState<Array<{ day: string; users: number }>>([]);
 
   useEffect(() => {
-    (async () => {
+    async function fetchAll() {
       const [u, q, d, s] = await Promise.all([
         supabase.from("profiles").select("id, created_at, full_name, email").order("created_at", { ascending: false }),
         supabase.from("questions").select("id", { count: "exact", head: true }),
@@ -41,7 +41,6 @@ function AdminDashboard() {
           at: p.created_at,
         })),
       );
-      // Simple last-7-days signup chart
       const byDay = new Map<string, number>();
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -53,7 +52,15 @@ function AdminDashboard() {
         if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + 1);
       }
       setChart(Array.from(byDay).map(([day, users]) => ({ day: day.slice(5), users })));
-    })();
+    }
+    fetchAll();
+    // Live sync: refetch when profiles or documents change.
+    const ch = supabase
+      .channel("admin-dashboard-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => fetchAll())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   return (
