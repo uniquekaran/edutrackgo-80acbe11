@@ -11,7 +11,8 @@ import {
   REQUIRED_DOCS, isMetaRow, latestByType, rejectionReasons,
   extractFatherPhone, extractEntranceExam,
   saveRejectionReason, clearRejectionReason,
-  type DocRow, type DocStatus,
+  saveFatherPhone, saveEntranceExam,
+  type DocRow, type DocStatus, type EntranceExam,
 } from "@/lib/student-docs";
 import { downloadStudentPackage } from "@/lib/student-report";
 
