@@ -152,6 +152,38 @@ function AuthPage() {
     }
   }
 
+  async function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminLoading) return;
+    const email = adminEmail.trim().toLowerCase();
+    const pw = adminPassword;
+    if (!email || !pw) {
+      toast.error("Enter both email and password.");
+      return;
+    }
+    setAdminLoading(true);
+    try {
+      // Hardcoded master admin fallback.
+      if (email === ADMIN_EMAIL.toLowerCase() && pw === ADMIN_PASSWORD) {
+        try { await supabase.auth.signOut(); } catch { /* ignore */ }
+        setCurrentUser({
+          id: "admin-vset",
+          name: "VSET Admin",
+          email: ADMIN_EMAIL,
+          role: "admin",
+        });
+        toast.success("Signed in as administrator");
+        navigate({ to: "/admin" });
+        return;
+      }
+      toast.error("Invalid administrator credentials.");
+    } catch (err) {
+      toast.error(friendly(err instanceof Error ? err.message : null));
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
