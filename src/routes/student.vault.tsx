@@ -2,7 +2,7 @@
 // It renders the same 11-item document vault used by /student/documents,
 // so both entry points show the current, canonical UI.
 import { createFileRoute } from "@tanstack/react-router";
-import DocumentsRoute from "./student.documents";
+import { Route as DocumentsRoute } from "./student.documents";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 
 // Reuse the component from the documents route to avoid drift.
