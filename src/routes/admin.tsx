@@ -43,24 +43,43 @@ function AdminLayout() {
       setChecking(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!mounted) return;
       setHasSession(!!session);
       setChecking(false);
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
+  // Fire access decision exactly once per resolved state — no toast spam, no loops.
+  const decidedRef = (globalThis as any).__adminDecidedRef ?? { current: false };
+  (globalThis as any).__adminDecidedRef = decidedRef;
   useEffect(() => {
     if (checking) return;
+    // Immediate bypass for the hardcoded admin — no backend lookup, no toast.
+    if (user && isAdminUser(user.email)) {
+      decidedRef.current = true;
+      return;
+    }
     if (!hasSession && !user) {
+      if (decidedRef.current) return;
+      decidedRef.current = true;
       navigate({ to: "/auth/admin" });
       return;
     }
     if (!user) return; // session exists, waiting for store hydration
-    if (!authorized) {
+    if (!authorized && !decidedRef.current) {
+      decidedRef.current = true;
+      toast.dismiss();
       toast.error("Access denied — this area is for administrators only.");
       navigate({ to: "/auth/admin" });
     }
-  }, [checking, hasSession, user, authorized, navigate]);
+  }, [checking, hasSession, user, authorized, navigate, decidedRef]);
+
+  // Reset decision flag when leaving the admin area.
+  useEffect(() => {
+    return () => { decidedRef.current = false; };
+  }, [decidedRef]);
+
 
   if (checking || (hasSession && !user)) {
     return (
