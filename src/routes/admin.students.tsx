@@ -319,26 +319,14 @@ function StudentDetail({ summary, onBack, onChanged }: { summary: StudentSummary
       </div>
 
       {tab === "overview" && (
-        <div className="rounded-2xl bg-surface border border-border shadow-soft p-5 space-y-4">
-          <Section title="Personal">
-            <Info label="Full Name" v={profile.full_name ?? "—"} />
-            <Info label="Email" v={profile.email ?? "—"} />
-            <Info label="Student Mobile" v={profile.phone ?? "—"} />
-            <Info label="Father Mobile" v={fatherPhone || "—"} />
-          </Section>
-          <Section title="Academic">
-            <Info label="College" v={profile.college ?? "—"} />
-            <Info label="Course / Department" v={profile.department ?? "—"} />
-            <Info label="Batch" v={profile.batch ?? "—"} />
-          </Section>
-          <Section title="Entrance Exam">
-            <Info label="Exam Name" v={exam.examName || "—"} />
-            <Info label="Score" v={exam.score || "—"} />
-            <Info label="Rank" v={exam.rank || "—"} />
-            <Info label="Year" v={exam.year || "—"} />
-          </Section>
-        </div>
+        <OverviewTab
+          profile={profile}
+          fatherPhone={fatherPhone}
+          exam={exam}
+          onChanged={onChanged}
+        />
       )}
+
 
       {tab === "documents" && (
         <div className="rounded-2xl bg-surface border border-border shadow-soft divide-y divide-border">
