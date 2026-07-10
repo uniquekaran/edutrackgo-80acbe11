@@ -195,6 +195,46 @@ function Documents() {
         </div>
       </div>
 
+      {/* Progress tracker */}
+      <div className="px-5 mt-6">
+        <div className="rounded-2xl bg-surface shadow-soft p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold">Upload progress</p>
+            {(() => {
+              const uploadedTypes = new Set(docs.map((d) => d.document_type));
+              const done = DOC_TYPES.filter((t) => uploadedTypes.has(t)).length;
+              return <p className="text-xs font-bold text-muted-foreground">{done} / {DOC_TYPES.length}</p>;
+            })()}
+          </div>
+          {(() => {
+            const uploadedTypes = new Set(docs.map((d) => d.document_type));
+            const done = DOC_TYPES.filter((t) => uploadedTypes.has(t)).length;
+            const pct = Math.round((done / DOC_TYPES.length) * 100);
+            return (
+              <>
+                <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <ul className="mt-3 grid grid-cols-1 gap-1.5">
+                  {DOC_TYPES.map((t) => {
+                    const found = docs.find((d) => d.document_type === t);
+                    return (
+                      <li key={t} className="flex items-center gap-2 text-[11px]">
+                        <span className={`w-4 h-4 rounded-full grid place-items-center shrink-0 ${found ? "bg-success/20 text-success" : "bg-secondary text-muted-foreground"}`}>
+                          {found ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        </span>
+                        <span className="flex-1 truncate">{t}</span>
+                        {found && <StatusTag status={found.status} />}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* History */}
       <div className="px-5 mt-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Document history</h2>
