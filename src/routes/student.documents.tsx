@@ -243,20 +243,12 @@ function Documents() {
                         : <><Upload className="w-3.5 h-3.5" /> Upload</>}
                     </button>
                     {row && (
-                      <>
-                        <button
-                          onClick={() => setPreview(row)}
-                          className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Preview
-                        </button>
-                        <button
-                          onClick={() => deleteDoc(row)}
-                          className="h-10 px-3 rounded-xl bg-destructive/10 text-destructive text-xs font-bold inline-flex items-center gap-1.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                      </>
+                      <button
+                        onClick={() => setPreview(row)}
+                        className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </button>
                     )}
                   </div>
                 </div>
