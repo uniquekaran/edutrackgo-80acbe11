@@ -115,7 +115,7 @@ function Documents() {
       student_name: user.name,
       document_type: key,
       file_url: fileUrl,
-      status: "submitted",
+      status: "pending",
     });
     if (insErr) toast.error(insErr.message);
     else toast.success(`${key} submitted`);
