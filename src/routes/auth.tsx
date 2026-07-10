@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Smartphone, User, ArrowRight, Lock } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Smartphone, User, ArrowRight, Lock, Mail, Eye, EyeOff, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "@/lib/store";
+import { setCurrentUser, useStore } from "@/lib/store";
 import { sendOtp, verifyOtp } from "@/lib/otp.functions";
 
 export const Route = createFileRoute("/auth")({
