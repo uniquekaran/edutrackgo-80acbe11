@@ -508,3 +508,105 @@ function RejectDialog({ doc, onCancel, onSubmit }: { doc: DocRow; onCancel: () =
     </div>
   );
 }
+
+function OverviewTab({ profile, fatherPhone, exam, onChanged }: {
+  profile: ProfileLite;
+  fatherPhone: string;
+  exam: EntranceExam;
+  onChanged: () => void;
+}) {
+  const [studentPhone, setStudentPhone] = useState(profile.phone ?? "");
+  const [fPhone, setFPhone] = useState(fatherPhone);
+  const [ex, setEx] = useState<EntranceExam>(exam);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  async function savePhone() {
+    setSaving("phone");
+    try {
+      const { error } = await supabase.from("profiles").update({ phone: studentPhone.trim() || null }).eq("id", profile.id);
+      if (error) throw error;
+      toast.success("Student mobile updated");
+      onChanged();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSaving(null); }
+  }
+  async function saveFather() {
+    setSaving("father");
+    const r = await saveFatherPhone(profile.id, profile.full_name ?? "", fPhone);
+    if (!r.ok) toast.error(r.error ?? "Failed to save");
+    else { toast.success("Father mobile updated"); onChanged(); }
+    setSaving(null);
+  }
+  async function saveExam() {
+    setSaving("exam");
+    const r = await saveEntranceExam(profile.id, profile.full_name ?? "", ex);
+    if (!r.ok) toast.error(r.error ?? "Failed to save");
+    else { toast.success("Entrance exam updated"); onChanged(); }
+    setSaving(null);
+  }
+
+  const inputCls = "w-full h-10 px-3 rounded-xl bg-secondary text-sm outline-none focus:ring-2 focus:ring-primary/40";
+  const labelCls = "text-[10px] font-bold uppercase tracking-wider text-muted-foreground";
+
+  return (
+    <div className="rounded-2xl bg-surface border border-border shadow-soft p-5 space-y-6">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Personal</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Info label="Full Name" v={profile.full_name ?? "—"} />
+          <Info label="Email" v={profile.email ?? "—"} />
+          <div>
+            <label className={labelCls}>Student Mobile</label>
+            <div className="mt-1 flex gap-2">
+              <input value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} className={inputCls} placeholder="+91…" />
+              <button onClick={savePhone} disabled={saving === "phone"} className="px-3 h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save</button>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Father Mobile</label>
+            <div className="mt-1 flex gap-2">
+              <input value={fPhone} onChange={(e) => setFPhone(e.target.value)} className={inputCls} placeholder="+91…" />
+              <button onClick={saveFather} disabled={saving === "father"} className="px-3 h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Academic</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Info label="College" v={profile.college ?? "—"} />
+          <Info label="Course / Department" v={profile.department ?? "—"} />
+          <Info label="Batch" v={profile.batch ?? "—"} />
+          <Info label="Student ID" v={profile.id.slice(0, 8) + "…"} mono />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entrance Exam</p>
+          <button onClick={saveExam} disabled={saving === "exam"} className="px-3 h-9 rounded-xl gradient-primary text-primary-foreground text-xs font-bold disabled:opacity-70">Save Exam</button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label className={labelCls}>Exam Name</label>
+            <input value={ex.examName} onChange={(e) => setEx({ ...ex, examName: e.target.value })} className={`${inputCls} mt-1`} placeholder="JEE, NEET…" />
+          </div>
+          <div>
+            <label className={labelCls}>Score</label>
+            <input value={ex.score} onChange={(e) => setEx({ ...ex, score: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+          <div>
+            <label className={labelCls}>Rank</label>
+            <input value={ex.rank} onChange={(e) => setEx({ ...ex, rank: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+          <div>
+            <label className={labelCls}>Year</label>
+            <input value={ex.year} onChange={(e) => setEx({ ...ex, year: e.target.value })} className={`${inputCls} mt-1`} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
