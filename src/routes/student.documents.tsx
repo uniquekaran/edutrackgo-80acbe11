@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, Trash2, RefreshCw, Phone, GraduationCap, Save,
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,12 +122,8 @@ function Documents() {
     setUploadingKey(null);
   }
 
-  async function deleteDoc(doc: DocRow) {
-    if (!confirm(`Delete uploaded "${doc.document_type}"?`)) return;
-    const { error } = await supabase.from("documents").delete().eq("id", doc.id);
-    if (error) return toast.error(error.message);
-    toast.success("Document removed");
-  }
+
+
 
   async function handleSavePhone() {
     setSavingForm("student_phone");
@@ -243,20 +239,12 @@ function Documents() {
                         : <><Upload className="w-3.5 h-3.5" /> Upload</>}
                     </button>
                     {row && (
-                      <>
-                        <button
-                          onClick={() => setPreview(row)}
-                          className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> Preview
-                        </button>
-                        <button
-                          onClick={() => deleteDoc(row)}
-                          className="h-10 px-3 rounded-xl bg-destructive/10 text-destructive text-xs font-bold inline-flex items-center gap-1.5"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                      </>
+                      <button
+                        onClick={() => setPreview(row)}
+                        className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </button>
                     )}
                   </div>
                 </div>
