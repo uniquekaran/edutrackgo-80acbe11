@@ -294,13 +294,14 @@ function AuthPage() {
                 <div className="h-px flex-1 bg-border" />
               </div>
 
-              <Link
-                to="/auth/admin"
+              <button
+                type="button"
+                onClick={() => setStep("admin-login")}
                 className="mt-4 w-full h-12 rounded-2xl border border-border bg-background flex items-center justify-center gap-2 text-sm font-semibold text-foreground hover:bg-accent/40 active:scale-[0.98] transition-all"
               >
                 <Lock className="w-4 h-4 text-primary" />
                 Admin / Teacher Portal Login
-              </Link>
+              </button>
 
               <p className="mt-5 text-center text-[11px] text-muted-foreground">
                 By continuing you agree to EduTrack's Terms & Privacy.
