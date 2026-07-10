@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Smartphone, User, ArrowRight, Lock } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, Smartphone, User, ArrowRight, Lock, Mail, Eye, EyeOff, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "@/lib/store";
+import { setCurrentUser, useStore } from "@/lib/store";
 import { sendOtp, verifyOtp } from "@/lib/otp.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -16,7 +16,10 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Step = "enter-phone" | "verify-otp";
+type Step = "enter-phone" | "verify-otp" | "admin-login";
+
+const ADMIN_EMAIL = "vset.official@gmail.com";
+const ADMIN_PASSWORD = "VSET2026";
 
 function friendly(msg?: string | null): string {
   const m = (msg ?? "").toLowerCase();
@@ -43,6 +46,10 @@ function AuthPage() {
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [expiresAt, setExpiresAt] = useState<number>(0);
   const [now, setNow] = useState<number>(() => Math.floor(Date.now() / 1000));
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPw, setShowAdminPw] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
   
 
   useEffect(() => {
@@ -145,6 +152,38 @@ function AuthPage() {
     }
   }
 
+  async function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminLoading) return;
+    const email = adminEmail.trim().toLowerCase();
+    const pw = adminPassword;
+    if (!email || !pw) {
+      toast.error("Enter both email and password.");
+      return;
+    }
+    setAdminLoading(true);
+    try {
+      // Hardcoded master admin fallback.
+      if (email === ADMIN_EMAIL.toLowerCase() && pw === ADMIN_PASSWORD) {
+        try { await supabase.auth.signOut(); } catch { /* ignore */ }
+        setCurrentUser({
+          id: "admin-vset",
+          name: "VSET Admin",
+          email: ADMIN_EMAIL,
+          role: "admin",
+        });
+        toast.success("Signed in as administrator");
+        navigate({ to: "/admin" });
+        return;
+      }
+      toast.error("Invalid administrator credentials.");
+    } catch (err) {
+      toast.error(friendly(err instanceof Error ? err.message : null));
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
@@ -158,11 +197,17 @@ function AuthPage() {
           <h1 className="text-2xl font-black">EduTrack</h1>
         </div>
         <h2 className="mt-8 text-3xl font-black leading-tight">
-          {step === "verify-otp" ? "Verify your mobile" : "Sign in to your campus"}
+          {step === "verify-otp"
+            ? "Verify your mobile"
+            : step === "admin-login"
+            ? "Admin / Teacher sign in"
+            : "Sign in to your campus"}
         </h2>
         <p className="mt-2 text-sm opacity-90">
           {step === "verify-otp"
             ? `We sent a 6-digit code to +${normalizedPhone}.`
+            : step === "admin-login"
+            ? "Restricted access — authorized staff accounts only."
             : "Continue with Google, or use your mobile number."}
         </p>
       </div>
@@ -249,18 +294,85 @@ function AuthPage() {
                 <div className="h-px flex-1 bg-border" />
               </div>
 
-              <Link
-                to="/auth/admin"
+              <button
+                type="button"
+                onClick={() => setStep("admin-login")}
                 className="mt-4 w-full h-12 rounded-2xl border border-border bg-background flex items-center justify-center gap-2 text-sm font-semibold text-foreground hover:bg-accent/40 active:scale-[0.98] transition-all"
               >
                 <Lock className="w-4 h-4 text-primary" />
                 Admin / Teacher Portal Login
-              </Link>
+              </button>
 
               <p className="mt-5 text-center text-[11px] text-muted-foreground">
                 By continuing you agree to EduTrack's Terms & Privacy.
               </p>
             </>
+          ) : step === "admin-login" ? (
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
+                <KeyRound className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Staff portal</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                    Sign in with your administrator email and password.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Email address</label>
+                <div className="mt-1.5 relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    disabled={adminLoading}
+                    className="w-full h-12 pl-10 pr-3 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="admin@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Password</label>
+                <div className="mt-1.5 relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type={showAdminPw ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    disabled={adminLoading}
+                    className="w-full h-12 pl-10 pr-10 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-muted-foreground rounded-lg hover:bg-accent/50"
+                    aria-label={showAdminPw ? "Hide password" : "Show password"}
+                  >
+                    {showAdminPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
+              >
+                {adminLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>) : (<><ShieldCheck className="w-4 h-4" /> Login as Admin</>)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("enter-phone")}
+                className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground font-semibold"
+              >
+                ← Back to student sign in
+              </button>
+            </form>
           ) : (
             <form onSubmit={handleVerify} className="space-y-3">
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
