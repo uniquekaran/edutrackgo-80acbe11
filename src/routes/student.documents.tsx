@@ -228,24 +228,23 @@ function Documents() {
                     onChange={(e) => onFile(item.key, e)}
                   />
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       onClick={() => pickFile(item.key)}
                       disabled={isUploading}
-                      className="flex-1 min-w-[130px] h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-70"
+                      className="h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-70"
                     >
                       {isUploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
-                        : row ? <><RefreshCw className="w-3.5 h-3.5" /> Replace</>
-                        : <><Upload className="w-3.5 h-3.5" /> Upload</>}
+                        : row ? <><RefreshCw className="w-3.5 h-3.5" /> Submit / Replace</>
+                        : <><Upload className="w-3.5 h-3.5" /> Submit / Upload</>}
                     </button>
-                    {row && (
-                      <button
-                        onClick={() => setPreview(row)}
-                        className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Preview
-                      </button>
-                    )}
+                    <button
+                      onClick={() => row && setPreview(row)}
+                      disabled={!row}
+                      className="h-10 rounded-xl bg-secondary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Preview
+                    </button>
                   </div>
                 </div>
               );

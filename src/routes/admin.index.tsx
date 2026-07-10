@@ -20,27 +20,46 @@ export const Route = createFileRoute("/admin/")({
 
 interface Counts { users: number; questions: number; documents: number; syllabi: number; }
 interface Activity { id: string; label: string; at: string; }
+type DashboardDiagnostic = { level: "error" | "warning"; message: string };
+
+function dbMessage(source: string, error: unknown) {
+  const err = error as { message?: string; code?: string; details?: string; hint?: string };
+  return [
+    `${source} error: ${err.message ?? String(error)}`,
+    err.code ? `code=${err.code}` : "",
+    err.details ? `details=${err.details}` : "",
+    err.hint ? `hint=${err.hint}` : "",
+  ].filter(Boolean).join(" · ");
+}
 
 function AdminDashboard() {
   const [counts, setCounts] = useState<Counts>({ users: 0, questions: 0, documents: 0, syllabi: 0 });
   const [activity, setActivity] = useState<Activity[]>([]);
   const [chart, setChart] = useState<Array<{ day: string; users: number }>>([]);
+  const [diagnostics, setDiagnostics] = useState<DashboardDiagnostic[]>([]);
 
   useEffect(() => {
     async function fetchAll() {
-      const [u, q, d, s] = await Promise.all([
+      const nextDiagnostics: DashboardDiagnostic[] = [];
+      const [u, d, q, s] = await Promise.all([
         supabase.from("profiles").select("id, created_at, full_name, email").order("created_at", { ascending: false }),
+        supabase.from("documents").select("id, student_id, document_type, status, created_at").order("created_at", { ascending: false }),
         supabase.from("questions").select("id", { count: "exact", head: true }),
-        supabase.from("documents").select("id", { count: "exact", head: true }),
         supabase.from("syllabi").select("id", { count: "exact", head: true }),
       ]);
+      if (u.error) nextDiagnostics.push({ level: "error", message: dbMessage("profiles", u.error) });
+      if (d.error) nextDiagnostics.push({ level: "error", message: dbMessage("documents", d.error) });
+      if (!u.error && (u.data ?? []).length === 0) nextDiagnostics.push({ level: "warning", message: "Connection Warning: profiles query returned 0 rows on the dashboard. No frontend role or tenant filters were applied." });
+      if (!d.error && (d.data ?? []).length === 0) nextDiagnostics.push({ level: "warning", message: "Connection Warning: documents query returned 0 rows on the dashboard. No frontend role or tenant filters were applied." });
       const users = u.data ?? [];
+      const documents = d.data ?? [];
       setCounts({
         users: users.length,
         questions: q.count ?? 0,
-        documents: d.count ?? 0,
+        documents: documents.length,
         syllabi: s.count ?? 0,
       });
+      setDiagnostics(nextDiagnostics);
       setActivity(
         users.slice(0, 8).map((p) => ({
           id: p.id,
@@ -76,6 +95,20 @@ function AdminDashboard() {
         <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Overview</p>
         <h1 className="text-2xl font-black">Dashboard</h1>
       </div>
+
+      {diagnostics.length > 0 && (
+        <div className="rounded-2xl bg-surface border border-border shadow-soft p-4 space-y-2">
+          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Database diagnostics</p>
+          {diagnostics.map((item, index) => (
+            <div
+              key={index}
+              className={`rounded-xl border p-3 text-xs font-semibold ${item.level === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/10 text-warning-foreground"}`}
+            >
+              {item.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total Users" value={counts.users} icon={<Users className="w-4 h-4" />} />

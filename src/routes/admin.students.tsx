@@ -62,6 +62,14 @@ function AdminStudents() {
   async function load() {
     setLoading(true);
     const nextDiagnostics: DbDiagnostic[] = [];
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      nextDiagnostics.push({ source: "client", level: "error", message: `client error: ${sessionError.message}` });
+    } else if (!sessionData.session) {
+      nextDiagnostics.push({ source: "client", level: "warning", message: "Connection Warning: no authenticated browser session is present, so protected database reads may return 0 rows." });
+    } else if ((sessionData.session.user.email ?? "").toLowerCase() !== "vset.official@gmail.com") {
+      nextDiagnostics.push({ source: "client", level: "warning", message: `Connection Warning: active session is ${sessionData.session.user.email ?? "unknown"}, not vset.official@gmail.com.` });
+    }
 
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
       nextDiagnostics.push({
@@ -74,7 +82,9 @@ function AdminStudents() {
     try {
       const { data: profs, error: pErr } = await supabase
         .from("profiles")
-        .select("id, email, full_name, phone, college, department, batch, avatar_url, created_at");
+        .select("id, email, full_name, phone, college, department, batch, avatar_url, created_at")
+        .order("created_at", { ascending: false })
+        .limit(10000);
 
       if (pErr) {
         nextDiagnostics.push({ source: "profiles", level: "error", message: formatDbError("profiles", pErr) });
@@ -99,7 +109,8 @@ function AdminStudents() {
       const { data: docsData, error: dErr } = await supabase
         .from("documents")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(10000);
 
       if (dErr) {
         nextDiagnostics.push({ source: "documents", level: "error", message: formatDbError("documents", dErr) });
