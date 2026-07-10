@@ -37,12 +37,15 @@ interface StudentSummary {
   rows: DocRow[];
 }
 
+type FilterKind = "all" | "pending" | "verified";
+
 function AdminStudents() {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<ProfileLite[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterKind>("all");
 
   async function load() {
     setLoading(true);
@@ -54,7 +57,6 @@ function AdminStudents() {
       ]);
       if (pErr) throw pErr;
       if (dErr) throw dErr;
-      // Only show students in the master list
       const roleMap = new Map<string, string>();
       for (const r of roles ?? []) roleMap.set(r.user_id, r.role);
       const students = (profs ?? []).filter((p) => (roleMap.get(p.id) ?? "student") === "student");
@@ -64,20 +66,49 @@ function AdminStudents() {
       toast.error((e as Error).message);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Live sync
+    const ch = supabase
+      .channel("admin-students-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
 
-  const summaries: StudentSummary[] = useMemo(() => {
+  const summaries = useMemo(() => {
     const byStudent = new Map<string, DocRow[]>();
     for (const d of docs) {
       const list = byStudent.get(d.student_id) ?? [];
       list.push(d);
       byStudent.set(d.student_id, list);
     }
-    return profiles.map((p) => ({ profile: p, rows: byStudent.get(p.id) ?? [] }))
-      .sort((a, b) => (a.profile.full_name ?? "").localeCompare(b.profile.full_name ?? ""));
+    return profiles.map((p) => {
+      const rows = byStudent.get(p.id) ?? [];
+      const uploads = latestByType(rows);
+      const fileDone = REQUIRED_DOCS.filter((it) => it.kind === "file" && uploads.get(it.key) && uploads.get(it.key)!.status !== "rejected").length;
+      const formDone =
+        (p.phone ? 1 : 0) +
+        (extractFatherPhone(rows) ? 1 : 0) +
+        ((extractEntranceExam(rows).examName || extractEntranceExam(rows).score) ? 1 : 0);
+      const done = fileDone + formDone;
+      const pendingAction = Array.from(uploads.values()).some((r) => r.status === "pending" || r.status === "submitted");
+      const fullyVerified = done === REQUIRED_DOCS.length &&
+        REQUIRED_DOCS.filter((it) => it.kind === "file").every((it) => uploads.get(it.key)?.status === "verified");
+      return { profile: p, rows, done, pendingAction, fullyVerified };
+    }).sort((a, b) => (a.profile.full_name ?? "").localeCompare(b.profile.full_name ?? ""));
   }, [profiles, docs]);
 
+  const counts = useMemo(() => ({
+    all: summaries.length,
+    pending: summaries.filter((s) => s.pendingAction).length,
+    verified: summaries.filter((s) => s.fullyVerified).length,
+  }), [summaries]);
+
   const filtered = summaries.filter((s) => {
+    if (filter === "pending" && !s.pendingAction) return false;
+    if (filter === "verified" && !s.fullyVerified) return false;
     if (!q) return true;
     const n = q.toLowerCase();
     return (s.profile.full_name ?? "").toLowerCase().includes(n)
@@ -86,21 +117,9 @@ function AdminStudents() {
       || s.profile.id.toLowerCase().includes(n);
   });
 
-  const totals = useMemo(() => {
-    let approved = 0, rejected = 0, pending = 0, total = 0;
-    for (const d of docs) {
-      if (isMetaRow(d)) continue;
-      total++;
-      if (d.status === "verified") approved++;
-      else if (d.status === "rejected") rejected++;
-      else pending++;
-    }
-    return { total, approved, rejected, pending };
-  }, [docs]);
-
   if (openId) {
     const s = summaries.find((x) => x.profile.id === openId);
-    if (s) return <StudentDetail summary={s} onBack={() => setOpenId(null)} onChanged={load} />;
+    if (s) return <StudentDetail summary={{ profile: s.profile, rows: s.rows }} onBack={() => setOpenId(null)} onChanged={load} />;
   }
 
   return (
@@ -111,11 +130,10 @@ function AdminStudents() {
         <p className="text-xs text-muted-foreground mt-0.5">Click any student to open their full 360° profile.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat label="Students" value={summaries.length} tone="default" icon={UsersIcon} />
-        <Stat label="Verified" value={totals.approved} tone="success" icon={CheckCircle2} />
-        <Stat label="Pending" value={totals.pending + totals.total - totals.approved - totals.rejected - totals.pending} tone="warning" icon={Clock} />
-        <Stat label="Rejected" value={totals.rejected} tone="danger" icon={XCircle} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <FilterTile active={filter === "all"} onClick={() => setFilter("all")} label="All Students" value={counts.all} tone="default" icon={UsersIcon} />
+        <FilterTile active={filter === "pending"} onClick={() => setFilter("pending")} label="Pending Action" value={counts.pending} tone="warning" icon={Clock} />
+        <FilterTile active={filter === "verified"} onClick={() => setFilter("verified")} label="Fully Verified" value={counts.verified} tone="success" icon={CheckCircle2} />
       </div>
 
       <div className="rounded-2xl bg-surface border border-border shadow-soft p-4">
@@ -137,7 +155,7 @@ function AdminStudents() {
                 <th className="text-left px-4 py-2.5 font-bold">Student</th>
                 <th className="text-left px-4 py-2.5 font-bold">Student ID</th>
                 <th className="text-left px-4 py-2.5 font-bold">Course</th>
-                <th className="text-left px-4 py-2.5 font-bold">Docs</th>
+                <th className="text-left px-4 py-2.5 font-bold">Progress</th>
                 <th className="text-left px-4 py-2.5 font-bold">Registered</th>
               </tr>
             </thead>
@@ -145,13 +163,7 @@ function AdminStudents() {
               {loading && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">Loading…</td></tr>}
               {!loading && filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">No students found.</td></tr>}
               {filtered.map((s) => {
-                const uploads = latestByType(s.rows);
-                const doneFiles = REQUIRED_DOCS.filter((it) => it.kind === "file" && uploads.get(it.key) && uploads.get(it.key)!.status !== "rejected").length;
-                const formDone =
-                  (s.profile.phone ? 1 : 0) +
-                  (extractFatherPhone(s.rows) ? 1 : 0) +
-                  ((extractEntranceExam(s.rows).examName || extractEntranceExam(s.rows).score) ? 1 : 0);
-                const done = doneFiles + formDone;
+                const pct = Math.round((s.done / REQUIRED_DOCS.length) * 100);
                 return (
                   <tr key={s.profile.id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => setOpenId(s.profile.id)}>
                     <td className="px-4 py-3">
@@ -165,7 +177,14 @@ function AdminStudents() {
                     </td>
                     <td className="px-4 py-3 text-[11px] text-muted-foreground font-mono truncate max-w-[160px]">{s.profile.id.slice(0, 8)}…</td>
                     <td className="px-4 py-3 text-muted-foreground truncate max-w-[160px]">{s.profile.department ?? s.profile.batch ?? "—"}</td>
-                    <td className="px-4 py-3 font-bold">{done}/{REQUIRED_DOCS.length}</td>
+                    <td className="px-4 py-3 min-w-[160px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[11px] font-bold tabular-nums">{s.done}/{REQUIRED_DOCS.length}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-[11px] text-muted-foreground">{s.profile.created_at ? formatISTDate(s.profile.created_at) : "—"}</td>
                   </tr>
                 );
@@ -177,6 +196,23 @@ function AdminStudents() {
     </div>
   );
 }
+
+function FilterTile({ active, onClick, label, value, tone, icon: Icon }: { active: boolean; onClick: () => void; label: string; value: number; tone: "default" | "success" | "warning"; icon: typeof CheckCircle2 }) {
+  const toneCls = { default: "text-foreground", success: "text-success", warning: "text-warning-foreground" }[tone];
+  return (
+    <button
+      onClick={onClick}
+      className={`text-left rounded-2xl p-4 border transition-all ${active ? "bg-accent border-primary shadow-soft ring-2 ring-primary/40" : "bg-surface border-border hover:bg-accent/30"}`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <Icon className={`w-4 h-4 ${toneCls}`} />
+      </div>
+      <p className={`text-2xl font-black mt-1 ${toneCls}`}>{value}</p>
+    </button>
+  );
+}
+
 
 function Stat({ label, value, tone, icon: Icon }: { label: string; value: number; tone: "default" | "success" | "warning" | "danger"; icon: typeof CheckCircle2 }) {
   const cls = { default: "bg-secondary text-foreground", success: "bg-success/15 text-success", warning: "bg-warning/15 text-warning-foreground", danger: "bg-destructive/10 text-destructive" }[tone];
