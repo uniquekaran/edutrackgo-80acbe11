@@ -5,7 +5,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-export type DocStatus = "pending" | "submitted" | "verified" | "rejected";
+export type DocStatus = "pending" | "verified" | "rejected";
 
 export interface DocRow {
   id: string;
