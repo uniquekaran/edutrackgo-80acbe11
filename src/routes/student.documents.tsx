@@ -1,304 +1,391 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X } from "lucide-react";
+import {
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, Trash2, RefreshCw, Phone, GraduationCap, Save,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatISTDateTime } from "@/lib/format";
+import {
+  REQUIRED_DOCS, FILE_ACCEPT, BUCKET,
+  type DocRow, type DocStatus, type EntranceExam, EMPTY_EXAM,
+  latestByType, rejectionReasons, extractFatherPhone, extractEntranceExam,
+  saveFatherPhone, saveEntranceExam, computeProgress,
+} from "@/lib/student-docs";
 
 export const Route = createFileRoute("/student/documents")({
-  head: () => ({ meta: [{ title: "Documents — EduTrack" }] }),
+  head: () => ({ meta: [{ title: "Document Vault — EduTrack" }] }),
   component: Documents,
 });
-
-export type DocStatus = "pending" | "verified" | "rejected";
-
-interface DocRow {
-  id: string;
-  student_id: string;
-  student_name: string;
-  document_type: string;
-  file_url: string;
-  status: DocStatus;
-  created_at: string;
-}
-
-const DOC_TYPES = [
-  "Trust Registration Certificate",
-  "10th Original Marksheet",
-  "12th Original Marksheet",
-  "Original Aadhaar Card",
-  "Student Registered Mobile Number",
-  "Entrance Exam Scorecard / Details",
-  "Original Income Certificate",
-  "Father Mobile Number",
-  "Original Caste Certificate",
-  "Original Payment Receipt",
-  "NOC (No Objection Certificate)",
-] as const;
-
-const BUCKET = "student-documents";
 
 function Documents() {
   const maybeUser = useStore((s) => s.user);
   if (!maybeUser) return null;
   const user = maybeUser;
-  const [docType, setDocType] = useState<string>(DOC_TYPES[0]);
-  const [uploading, setUploading] = useState(false);
-  const [docs, setDocs] = useState<DocRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [preview, setPreview] = useState<DocRow | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const prevStatusRef = useRef<Map<string, DocStatus>>(new Map());
 
-  // Initial load + realtime subscription
+  const [rows, setRows] = useState<DocRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [preview, setPreview] = useState<DocRow | null>(null);
+  const [studentPhone, setStudentPhone] = useState("");
+  const [fatherPhone, setFatherPhone] = useState("");
+  const [exam, setExam] = useState<EntranceExam>({ ...EMPTY_EXAM });
+  const [savingForm, setSavingForm] = useState<null | "student_phone" | "father_phone" | "entrance_exam">(null);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const prevStatus = useRef<Map<string, DocStatus>>(new Map());
+
   useEffect(() => {
     let active = true;
-
     async function load() {
-      try {
-        const { data, error } = await supabase
-          .from("documents")
-          .select("*")
-          .eq("student_id", user.id)
-          .order("created_at", { ascending: false });
-        if (!active) return;
-        if (error) throw error;
-        const next = (data ?? []) as DocRow[];
-        // Detect status transitions for live toast
-        const prev = prevStatusRef.current;
-        if (prev.size > 0) {
-          for (const d of next) {
-            const before = prev.get(d.id);
-            if (before && before !== d.status) {
-              if (d.status === "verified") toast.success(`Document Status Updated · ${d.document_type} verified`);
-              else if (d.status === "rejected") toast.error(`Document Status Updated · ${d.document_type} rejected`);
-            }
+      const [{ data: docsData }, { data: profile }] = await Promise.all([
+        supabase.from("documents").select("*").eq("student_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle(),
+      ]);
+      if (!active) return;
+      const next = (docsData ?? []) as DocRow[];
+      // Live status transition toasts
+      const prev = prevStatus.current;
+      if (prev.size > 0) {
+        for (const d of next) {
+          const before = prev.get(d.id);
+          if (before && before !== d.status && !d.document_type.startsWith("__meta:")) {
+            if (d.status === "verified") toast.success(`Verified — ${d.document_type}`);
+            else if (d.status === "rejected") toast.error(`Rejected — ${d.document_type}`);
           }
         }
-        prevStatusRef.current = new Map(next.map((d) => [d.id, d.status]));
-        setDocs(next);
-      } catch (err) {
-        if (!active) return;
-        console.warn("documents load failed", err);
-        toast.error("Couldn't load documents — showing offline state");
-      } finally {
-        if (active) setLoading(false);
       }
+      prevStatus.current = new Map(next.map((d) => [d.id, d.status]));
+      setRows(next);
+      setStudentPhone(profile?.phone ?? "");
+      setFatherPhone(extractFatherPhone(next));
+      setExam(extractEntranceExam(next));
+      setLoading(false);
     }
     load();
-
-    const channel = supabase
-      .channel(`documents:student:${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "documents", filter: `student_id=eq.${user.id}` },
-        () => load(),
-      )
+    const ch = supabase
+      .channel(`docs:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "documents", filter: `student_id=eq.${user.id}` }, () => load())
       .subscribe();
-
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
+    return () => { active = false; supabase.removeChannel(ch); };
   }, [user.id]);
 
-  async function handlePick() {
-    fileRef.current?.click();
+  const uploads = latestByType(rows);
+  const rejections = rejectionReasons(rows);
+  const progress = computeProgress(rows, studentPhone);
+  const pct = Math.round((progress.done / progress.total) * 100);
+
+  async function pickFile(key: string) {
+    fileRefs.current[key]?.click();
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(key: string, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setUploading(true);
-
+    // Validate type
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    if (!allowed.includes(file.type) && !["pdf", "jpg", "jpeg", "png"].includes(ext)) {
+      toast.error("Only PDF, JPG, or PNG files are accepted.");
+      return;
+    }
+    setUploadingKey(key);
     let fileUrl = "";
     try {
-      const ext = file.name.split(".").pop() || "bin";
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { contentType: file.type, upsert: false });
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || "bin"}`;
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+        contentType: file.type, upsert: false,
+      });
       if (upErr) throw upErr;
-
-      // Private bucket → signed URL for viewing (1 year)
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
       fileUrl = signed?.signedUrl ?? path;
     } catch (err) {
-      // Fallback: local object URL so the upload still succeeds in preview
-      console.warn("Storage upload failed, falling back to local object URL", err);
+      console.warn("upload failed", err);
       fileUrl = URL.createObjectURL(file);
-      toast.warning("Stored locally — storage upload was blocked");
+      toast.warning("Stored locally — cloud upload was blocked");
     }
-
+    // Delete prior row for this doc type so "Replace" behaviour is clean
+    const prior = uploads.get(key);
+    if (prior) {
+      await supabase.from("documents").delete().eq("id", prior.id);
+    }
     const { error: insErr } = await supabase.from("documents").insert({
       student_id: user.id,
       student_name: user.name,
-      document_type: docType,
+      document_type: key,
       file_url: fileUrl,
-      status: "pending",
+      status: "submitted",
     });
+    if (insErr) toast.error(insErr.message);
+    else toast.success(`${key} submitted`);
+    setUploadingKey(null);
+  }
 
-    if (insErr) {
-      toast.error(insErr.message);
-    } else {
-      toast.success(`${docType} submitted — pending verification`);
-    }
-    setUploading(false);
+  async function deleteDoc(doc: DocRow) {
+    if (!confirm(`Delete uploaded "${doc.document_type}"?`)) return;
+    const { error } = await supabase.from("documents").delete().eq("id", doc.id);
+    if (error) return toast.error(error.message);
+    toast.success("Document removed");
+  }
+
+  async function handleSavePhone() {
+    setSavingForm("student_phone");
+    const { error } = await supabase.from("profiles").update({ phone: studentPhone.trim() || null }).eq("id", user.id);
+    setSavingForm(null);
+    if (error) return toast.error(error.message);
+    toast.success("Mobile number saved");
+  }
+  async function handleSaveFatherPhone() {
+    setSavingForm("father_phone");
+    const r = await saveFatherPhone(user.id, user.name, fatherPhone);
+    setSavingForm(null);
+    if (!r.ok) return toast.error(r.error);
+    toast.success("Father's mobile saved");
+  }
+  async function handleSaveExam() {
+    setSavingForm("entrance_exam");
+    const r = await saveEntranceExam(user.id, user.name, exam);
+    setSavingForm(null);
+    if (!r.ok) return toast.error(r.error);
+    toast.success("Entrance exam details saved");
   }
 
   return (
-    <div className="pb-6">
-      <header className="px-6 pt-10 pb-5">
-        <h1 className="text-2xl font-black">Document Portal</h1>
-        <p className="text-sm text-muted-foreground mt-1">Upload, track and manage verification status.</p>
+    <div className="pb-8">
+      <header className="px-6 pt-10 pb-4">
+        <h1 className="text-2xl font-black">Document Vault</h1>
+        <p className="text-sm text-muted-foreground mt-1">Upload the 11 required items and keep your details up to date.</p>
       </header>
 
-      {/* Upload card */}
-      <div className="px-5">
+      {/* Progress */}
+      <section className="px-5">
         <div className="rounded-2xl bg-surface shadow-soft p-5">
-          <h2 className="text-base font-bold">Submit a document</h2>
-          <p className="text-xs text-muted-foreground">Choose the type, then attach a file.</p>
-
-          <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mt-4 block">
-            Document type
-          </label>
-          <div className="mt-1.5 relative">
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              disabled={uploading}
-              className="w-full h-12 px-3.5 pr-9 rounded-xl bg-secondary outline-none text-sm font-semibold border border-transparent focus:border-primary focus:bg-surface transition-all appearance-none"
-            >
-              {DOC_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <FileText className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          </div>
-
-          <input ref={fileRef} type="file" className="hidden" onChange={onFile} accept="image/*,.pdf,.doc,.docx" />
-          <button
-            onClick={handlePick}
-            disabled={uploading}
-            className="mt-4 w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-bold shadow-elevated active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
-          >
-            {uploading ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> Uploading…</>
-            ) : (
-              <><Upload className="w-5 h-5" /> Choose file & upload</>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Progress tracker */}
-      <div className="px-5 mt-6">
-        <div className="rounded-2xl bg-surface shadow-soft p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold">Upload progress</p>
-            {(() => {
-              const uploadedTypes = new Set(docs.map((d) => d.document_type));
-              const done = DOC_TYPES.filter((t) => uploadedTypes.has(t)).length;
-              return <p className="text-xs font-bold text-muted-foreground">{done} / {DOC_TYPES.length}</p>;
-            })()}
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Progress</p>
+              <p className="text-lg font-black mt-0.5">Documents Completed: {progress.done} / {progress.total}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-black">{pct}%</p>
+              <p className="text-[10px] text-muted-foreground">completion</p>
+            </div>
           </div>
-          {(() => {
-            const uploadedTypes = new Set(docs.map((d) => d.document_type));
-            const done = DOC_TYPES.filter((t) => uploadedTypes.has(t)).length;
-            const pct = Math.round((done / DOC_TYPES.length) * 100);
-            return (
-              <>
-                <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
-                </div>
-                <ul className="mt-3 grid grid-cols-1 gap-1.5">
-                  {DOC_TYPES.map((t) => {
-                    const found = docs.find((d) => d.document_type === t);
-                    return (
-                      <li key={t} className="flex items-center gap-2 text-[11px]">
-                        <span className={`w-4 h-4 rounded-full grid place-items-center shrink-0 ${found ? "bg-success/20 text-success" : "bg-secondary text-muted-foreground"}`}>
-                          {found ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                        </span>
-                        <span className="flex-1 truncate">{t}</span>
-                        {found && <StatusTag status={found.status} />}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            );
-          })()}
+          <div className="mt-3 h-2.5 rounded-full bg-secondary overflow-hidden">
+            <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* History */}
-      <div className="px-5 mt-6">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Document history</h2>
-        {loading ? (
-          <div className="rounded-2xl bg-surface shadow-soft p-6 text-center">
-            <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        ) : docs.length === 0 ? (
-          <div className="rounded-2xl bg-surface shadow-soft p-6 text-center">
-            <FileText className="w-7 h-7 mx-auto text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">No documents yet.</p>
-          </div>
-        ) : (
-          <ul className="rounded-2xl bg-surface shadow-soft divide-y divide-border overflow-hidden">
-            {docs.map((d) => (
-              <li key={d.id} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent text-primary grid place-items-center shrink-0">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate">{d.document_type}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {formatISTDateTime(d.created_at)}
-                  </p>
-                </div>
-                {d.file_url && (
-                  <button
-                    onClick={() => setPreview(d)}
-                    className="w-8 h-8 rounded-lg grid place-items-center text-muted-foreground hover:bg-accent/50"
-                    aria-label="Preview file"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                )}
-                <StatusTag status={d.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <div className="px-5 mt-6"><div className="rounded-2xl bg-surface shadow-soft p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" /></div></div>
+      ) : (
+        <>
+          {/* 11 required items */}
+          <section className="px-5 mt-5 space-y-3">
+            {REQUIRED_DOCS.map((item, idx) => {
+              const num = idx + 1;
+              if (item.kind === "form") {
+                return (
+                  <FormCard
+                    key={item.key}
+                    num={num}
+                    item={item}
+                    studentPhone={studentPhone} setStudentPhone={setStudentPhone}
+                    fatherPhone={fatherPhone} setFatherPhone={setFatherPhone}
+                    exam={exam} setExam={setExam}
+                    saving={savingForm}
+                    onSavePhone={handleSavePhone}
+                    onSaveFatherPhone={handleSaveFatherPhone}
+                    onSaveExam={handleSaveExam}
+                  />
+                );
+              }
+              const row = uploads.get(item.key);
+              const rejection = row ? rejections.get(row.id) : "";
+              const isUploading = uploadingKey === item.key;
+              return (
+                <div key={item.key} className="rounded-2xl bg-surface shadow-soft p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0 text-xs font-black">{num}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate">{item.label}{item.optional && <span className="ml-2 text-[10px] text-muted-foreground font-normal">optional</span>}</p>
+                      {row ? (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Submitted · {formatISTDateTime(row.created_at)}</p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Not uploaded yet</p>
+                      )}
+                    </div>
+                    <StatusTag status={row ? row.status : "pending"} />
+                  </div>
 
-      {preview && <DocPreviewModal doc={preview} onClose={() => setPreview(null)} />}
+                  {rejection && (
+                    <div className="mt-3 rounded-xl bg-destructive/10 border border-destructive/30 p-3 text-[12px] text-destructive">
+                      <p className="font-bold uppercase text-[10px] tracking-widest mb-0.5">Rejection reason</p>
+                      <p className="text-foreground/90">{rejection}</p>
+                    </div>
+                  )}
+
+                  <input
+                    ref={(el) => { fileRefs.current[item.key] = el; }}
+                    type="file" className="hidden" accept={FILE_ACCEPT}
+                    onChange={(e) => onFile(item.key, e)}
+                  />
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => pickFile(item.key)}
+                      disabled={isUploading}
+                      className="flex-1 min-w-[130px] h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-70"
+                    >
+                      {isUploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
+                        : row ? <><RefreshCw className="w-3.5 h-3.5" /> Replace</>
+                        : <><Upload className="w-3.5 h-3.5" /> Upload</>}
+                    </button>
+                    {row && (
+                      <>
+                        <button
+                          onClick={() => setPreview(row)}
+                          className="h-10 px-3 rounded-xl bg-secondary text-xs font-bold inline-flex items-center gap-1.5"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Preview
+                        </button>
+                        <button
+                          onClick={() => deleteDoc(row)}
+                          className="h-10 px-3 rounded-xl bg-destructive/10 text-destructive text-xs font-bold inline-flex items-center gap-1.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+
+          {/* Checklist summary */}
+          <section className="px-5 mt-6">
+            <div className="rounded-2xl bg-surface shadow-soft p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Checklist</p>
+              <ul className="grid grid-cols-1 gap-1.5">
+                {REQUIRED_DOCS.map((it) => {
+                  let ok = false;
+                  if (it.kind === "file") {
+                    const row = uploads.get(it.key);
+                    ok = !!row && row.status !== "rejected";
+                  } else if (it.formField === "student_phone") ok = !!studentPhone.trim();
+                  else if (it.formField === "father_phone") ok = !!fatherPhone.trim();
+                  else if (it.formField === "entrance_exam") ok = !!(exam.examName || exam.score);
+                  return (
+                    <li key={it.key} className="flex items-center gap-2 text-[12px]">
+                      <span className={`w-4 h-4 rounded-full grid place-items-center shrink-0 ${ok ? "bg-success/20 text-success" : "bg-secondary text-muted-foreground"}`}>
+                        {ok ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                      </span>
+                      <span className="flex-1 truncate">{it.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
+        </>
+      )}
+
+      {preview && <PreviewModal doc={preview} onClose={() => setPreview(null)} />}
     </div>
   );
 }
 
-function DocPreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void }) {
+function FormCard(props: {
+  num: number; item: (typeof REQUIRED_DOCS)[number];
+  studentPhone: string; setStudentPhone: (v: string) => void;
+  fatherPhone: string; setFatherPhone: (v: string) => void;
+  exam: EntranceExam; setExam: (v: EntranceExam) => void;
+  saving: null | "student_phone" | "father_phone" | "entrance_exam";
+  onSavePhone: () => void; onSaveFatherPhone: () => void; onSaveExam: () => void;
+}) {
+  const { num, item } = props;
+  const isSaving = props.saving === item.formField;
+  const complete =
+    item.formField === "student_phone" ? !!props.studentPhone.trim() :
+    item.formField === "father_phone" ? !!props.fatherPhone.trim() :
+    !!(props.exam.examName || props.exam.score);
+
+  return (
+    <div className="rounded-2xl bg-surface shadow-soft p-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0 text-xs font-black">{num}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold truncate flex items-center gap-1.5">
+            {item.formField === "entrance_exam" ? <GraduationCap className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
+            {item.label}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Enter as a form field — no file upload required.</p>
+        </div>
+        <StatusTag status={complete ? "verified" : "pending"} />
+      </div>
+
+      {item.formField === "student_phone" && (
+        <div className="mt-3 flex gap-2">
+          <input value={props.studentPhone} onChange={(e) => props.setStudentPhone(e.target.value)}
+            placeholder="e.g. +91 98xxxxxx"
+            className="flex-1 h-10 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none" />
+          <button onClick={props.onSavePhone} disabled={isSaving}
+            className="h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-70">
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+          </button>
+        </div>
+      )}
+      {item.formField === "father_phone" && (
+        <div className="mt-3 flex gap-2">
+          <input value={props.fatherPhone} onChange={(e) => props.setFatherPhone(e.target.value)}
+            placeholder="Father's mobile number"
+            className="flex-1 h-10 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none" />
+          <button onClick={props.onSaveFatherPhone} disabled={isSaving}
+            className="h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-70">
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+          </button>
+        </div>
+      )}
+      {item.formField === "entrance_exam" && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <ExamField label="Exam Name" v={props.exam.examName} onChange={(v) => props.setExam({ ...props.exam, examName: v })} />
+          <ExamField label="Score" v={props.exam.score} onChange={(v) => props.setExam({ ...props.exam, score: v })} />
+          <ExamField label="Rank" v={props.exam.rank} onChange={(v) => props.setExam({ ...props.exam, rank: v })} />
+          <ExamField label="Year" v={props.exam.year} onChange={(v) => props.setExam({ ...props.exam, year: v })} />
+          <button onClick={props.onSaveExam} disabled={isSaving}
+            className="col-span-2 h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-70">
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save entrance details
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+function ExamField({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input value={v} onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full h-10 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none" />
+    </label>
+  );
+}
+
+function PreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void }) {
   const url = doc.file_url;
   const lower = url.split("?")[0].toLowerCase();
   const isImage = /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/.test(lower) || url.startsWith("data:image") || url.startsWith("blob:");
   const isPdf = /\.pdf$/.test(lower) || url.startsWith("data:application/pdf");
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 animate-in fade-in" onClick={onClose}>
-      <div className="bg-surface w-full max-w-md max-h-[92vh] rounded-3xl shadow-elevated flex flex-col overflow-hidden animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="bg-surface w-full max-w-md max-h-[92vh] rounded-3xl shadow-elevated flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-5 py-3 border-b border-border">
-          <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0">
-            <FileText className="w-4 h-4" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">{doc.document_type}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{formatISTDateTime(doc.created_at)}</p>
-          </div>
+          <FileText className="w-4 h-4 text-primary" />
+          <p className="text-sm font-bold truncate flex-1">{doc.document_type}</p>
           <StatusTag status={doc.status} />
-          <button onClick={onClose} aria-label="Close preview" className="w-8 h-8 rounded-lg grid place-items-center hover:bg-accent/50">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg grid place-items-center hover:bg-accent/50" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -315,11 +402,6 @@ function DocPreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void })
             </div>
           )}
         </div>
-        <div className="p-4 border-t border-border">
-          <button onClick={onClose} className="w-full h-11 rounded-xl gradient-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
-            <X className="w-4 h-4" /> Close Preview
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -327,11 +409,12 @@ function DocPreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void })
 
 export function StatusTag({ status }: { status: DocStatus }) {
   const map = {
-    pending: { Icon: Clock, label: "Pending", cls: "bg-warning/15 text-warning-foreground border-warning/30" },
-    verified: { Icon: CheckCircle2, label: "Verified", cls: "bg-success/15 text-success border-success/30" },
-    rejected: { Icon: XCircle, label: "Rejected", cls: "bg-destructive/10 text-destructive border-destructive/30" },
+    pending:   { Icon: Clock,        label: "Pending",   cls: "bg-muted text-muted-foreground border-border" },
+    submitted: { Icon: Upload,       label: "Submitted", cls: "bg-warning/15 text-warning-foreground border-warning/30" },
+    verified:  { Icon: CheckCircle2, label: "Verified",  cls: "bg-success/15 text-success border-success/30" },
+    rejected:  { Icon: XCircle,      label: "Rejected",  cls: "bg-destructive/10 text-destructive border-destructive/30" },
   } as const;
-  const { Icon, label, cls } = map[status];
+  const { Icon, label, cls } = map[status] ?? map.pending;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${cls}`}>
       <Icon className="w-3 h-3" /> {label}
