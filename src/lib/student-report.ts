@@ -59,12 +59,23 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(11);
   };
   const writeKV = (k: string, v: string) => {
+    if (y > pageH - margin - 26) { doc.addPage(); y = margin; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     doc.text(k + ":", margin, y);
     doc.setFont("helvetica", "normal");
     const wrapped = doc.splitTextToSize(v || "—", pageW - margin * 2 - 120);
     doc.text(wrapped as string[], margin + 120, y);
     line(14 * Math.max(1, (wrapped as string[]).length));
+  };
+  const writeLinkedUrl = (url: string) => {
+    const lines = doc.splitTextToSize(url, pageW - margin * 2 - 20) as string[];
+    doc.setTextColor(37, 99, 235); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    for (const chunk of lines.slice(0, 4)) {
+      if (y > pageH - margin - 12) { doc.addPage(); y = margin; }
+      doc.textWithLink(chunk, margin + 20, y, { url });
+      line(11);
+    }
+    doc.setTextColor(0);
   };
   const rule = () => {
     doc.setDrawColor(220); doc.line(margin, y, pageW - margin, y); line(10);
@@ -75,7 +86,7 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   doc.rect(0, 0, pageW, 80, "F");
   doc.setTextColor(255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-  doc.text("EduTrack — Complete Student Data", margin, 40);
+  doc.text("EduTrack — Janam Kundli Student Dossier", margin, 40);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10);
   doc.text(`Generated ${new Date().toLocaleString("en-IN")}`, margin, 60);
   doc.setTextColor(0);
@@ -90,34 +101,42 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
     }
   }
 
-  writeH("Profile", 14);
+  writeH("Full Personal Profile", 14);
   writeKV("Full Name", input.profile.full_name ?? "—");
   writeKV("Student ID", input.profile.id);
   writeKV("Email", input.profile.email ?? "—");
-  writeKV("Student Mobile", input.profile.phone ?? "—");
-  writeKV("Father Mobile", input.fatherPhone || "—");
+  writeKV("Verified Student Mobile", input.profile.phone ?? "—");
+  writeKV("Verified Father Mobile", input.fatherPhone || "—");
   writeKV("College", input.profile.college ?? "—");
-  writeKV("Course / Department", input.profile.department ?? "—");
+  writeKV("Course Track", input.profile.department ?? input.profile.batch ?? "—");
+  writeKV("Department", input.profile.department ?? "—");
   writeKV("Batch", input.profile.batch ?? "—");
-  writeKV("Registered", input.profile.created_at ? new Date(input.profile.created_at).toLocaleDateString("en-IN") : "—");
+  writeKV("Absolute Registration Date", input.profile.created_at ? new Date(input.profile.created_at).toLocaleString("en-IN") : "—");
   rule();
 
-  writeH("Entrance Exam Details", 14);
+  writeH("Entrance Exam Card", 14);
   writeKV("Exam Name", input.exam.examName || "—");
-  writeKV("Score", input.exam.score || "—");
-  writeKV("Rank", input.exam.rank || "—");
+  writeKV("Earned Score", input.exam.score || "—");
+  writeKV("Secure Rank", input.exam.rank || "—");
   writeKV("Year", input.exam.year || "—");
   rule();
 
   const uploads = latestByType(input.rows);
-  writeH("Document Checklist & Verification", 14);
+  doc.addPage();
+  y = margin;
+  writeH("11-Point Validation Checklist Matrix", 14);
   for (const it of REQUIRED_DOCS) {
+    if (y > pageH - margin - 70) { doc.addPage(); y = margin; }
     if (it.kind === "form") {
       const done =
         it.formField === "student_phone" ? !!input.profile.phone :
         it.formField === "father_phone" ? !!input.fatherPhone :
         !!(input.exam.examName || input.exam.score);
-      writeKV(it.label, done ? "COMPLETE (form)" : "PENDING");
+      const value =
+        it.formField === "student_phone" ? (input.profile.phone ?? "—") :
+        it.formField === "father_phone" ? (input.fatherPhone || "—") :
+        `${input.exam.examName || "—"} · Score: ${input.exam.score || "—"} · Rank: ${input.exam.rank || "—"} · Year: ${input.exam.year || "—"}`;
+      writeKV(it.label, `${done ? "COMPLETE" : "PENDING"} · ${value}`);
       continue;
     }
     const row = uploads.get(it.key);
@@ -128,25 +147,18 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
       const reason = input.rejections.get(row.id);
       if (reason) writeKV("  Admin Remark", reason);
     }
-    // File URL underneath (as a clickable link)
-    doc.setTextColor(37, 99, 235); doc.setFontSize(9);
-    const linkText = doc.splitTextToSize(row.file_url, pageW - margin * 2 - 20) as string[];
-    doc.textWithLink(linkText[0] ?? row.file_url, margin + 20, y, { url: row.file_url });
-    doc.setTextColor(0);
-    line(12);
+    writeLinkedUrl(row.file_url);
   }
   rule();
 
-  writeH("Uploaded Files (raw list)", 14);
+  writeH("Uploaded Asset Links", 14);
   const real = input.rows.filter((r) => !r.document_type.startsWith("__meta:"));
   if (real.length === 0) writeKV("(none)", "");
   for (const r of real) {
     writeKV(r.document_type, `${r.status.toUpperCase()} · ${new Date(r.created_at).toLocaleString("en-IN")}`);
-    doc.setTextColor(37, 99, 235); doc.setFontSize(9);
-    const linkText = doc.splitTextToSize(r.file_url, pageW - margin * 2 - 20) as string[];
-    doc.textWithLink(linkText[0] ?? r.file_url, margin + 20, y, { url: r.file_url });
-    doc.setTextColor(0);
-    line(12);
+    const reason = input.rejections.get(r.id);
+    if (reason) writeKV("Admin Remark", reason);
+    writeLinkedUrl(r.file_url);
   }
 
   const filename = `${safeName(input.profile.full_name)}_${input.profile.id.slice(0, 8)}_CompleteData.pdf`;

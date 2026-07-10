@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, Users, FileText, HelpCircle, Settings as SettingsIcon,
   ShieldAlert, LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, signOut as clearLocalUser } from "@/lib/store";
+import { useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -31,57 +31,70 @@ function AdminLayout() {
   const navigate = useNavigate();
   const loc = useLocation();
   const [checking, setChecking] = useState(true);
-  const [hasSession, setHasSession] = useState<boolean | null>(null);
-  const authorized = !!user && isAdminUser(user.email);
+  const [allowed, setAllowed] = useState(false);
+  const [sessionAdmin, setSessionAdmin] = useState<User | null>(null);
+  const checkedOnceRef = useRef(false);
+  const displayUser = user ?? sessionAdmin;
 
-  // Wait for Supabase session hydration before deciding access.
+  // Evaluate admin access exactly once on mount. The hardcoded admin email is
+  // granted immediately from the active auth session and never waits on roles.
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setHasSession(!!data.session);
-      setChecking(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!mounted) return;
-      setHasSession(!!session);
-      setChecking(false);
-    });
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
+    if (checkedOnceRef.current) return;
+    checkedOnceRef.current = true;
+    let cancelled = false;
+
+    async function decide() {
+      toast.dismiss();
+      try {
+        const { data } = await supabase.auth.getSession();
+        const sessionUser = data.session?.user;
+        const sessionEmail = sessionUser?.email ?? "";
+        const email = sessionEmail;
+
+        if (sessionUser && isAdminUser(email)) {
+          const adminUser: User = {
+            id: sessionUser.id,
+            email,
+            name:
+              (sessionUser?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name ??
+              (sessionUser?.user_metadata as { name?: string } | undefined)?.name ??
+              user?.name ??
+              email.split("@")[0],
+            role: "admin",
+            college: user?.college ?? "AKTU",
+            department: user?.department,
+          };
+          setSessionAdmin(adminUser);
+          setCurrentUser(adminUser);
+          if (!cancelled) {
+            setAllowed(true);
+            setChecking(false);
+          }
+          return;
+        }
+      } catch {
+        // Fall through to the clean escape route below.
+      }
+
+      if (!cancelled) {
+        toast.dismiss();
+        setAllowed(false);
+        setChecking(false);
+        navigate({ to: "/auth/admin", replace: true });
+      }
+    }
+
+    void decide();
+    return () => {
+      cancelled = true;
+      toast.dismiss();
+    };
+    // This guard intentionally runs once per mount to avoid toast/nav loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fire access decision exactly once per resolved state — no toast spam, no loops.
-  const decidedRef = (globalThis as any).__adminDecidedRef ?? { current: false };
-  (globalThis as any).__adminDecidedRef = decidedRef;
-  useEffect(() => {
-    if (checking) return;
-    // Immediate bypass for the hardcoded admin — no backend lookup, no toast.
-    if (user && isAdminUser(user.email)) {
-      decidedRef.current = true;
-      return;
-    }
-    if (!hasSession && !user) {
-      if (decidedRef.current) return;
-      decidedRef.current = true;
-      navigate({ to: "/auth/admin" });
-      return;
-    }
-    if (!user) return; // session exists, waiting for store hydration
-    if (!authorized && !decidedRef.current) {
-      decidedRef.current = true;
-      toast.dismiss();
-      toast.error("Access denied — this area is for administrators only.");
-      navigate({ to: "/auth/admin" });
-    }
-  }, [checking, hasSession, user, authorized, navigate, decidedRef]);
 
-  // Reset decision flag when leaving the admin area.
-  useEffect(() => {
-    return () => { decidedRef.current = false; };
-  }, [decidedRef]);
-
-
-  if (checking || (hasSession && !user)) {
+  if (checking) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="text-center space-y-2">
@@ -92,8 +105,7 @@ function AdminLayout() {
     );
   }
 
-  if (!user) return null;
-  if (!authorized) {
+  if (!allowed || !displayUser) {
     return (
       <div className="min-h-screen grid place-items-center bg-background">
         <div className="text-center space-y-2">
@@ -140,7 +152,7 @@ function AdminLayout() {
           })}
         </nav>
         <div className="p-3 border-t border-border space-y-2">
-          <div className="px-2 text-[11px] text-muted-foreground truncate">{user.email}</div>
+          <div className="px-2 text-[11px] text-muted-foreground truncate">{displayUser.email}</div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
