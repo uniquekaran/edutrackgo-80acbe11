@@ -93,7 +93,7 @@ function AdminStudents() {
         (extractFatherPhone(rows) ? 1 : 0) +
         ((extractEntranceExam(rows).examName || extractEntranceExam(rows).score) ? 1 : 0);
       const done = fileDone + formDone;
-      const pendingAction = Array.from(uploads.values()).some((r) => r.status === "pending" || r.status === "submitted");
+      const pendingAction = Array.from(uploads.values()).some((r) => r.status === "pending");
       const fullyVerified = done === REQUIRED_DOCS.length &&
         REQUIRED_DOCS.filter((it) => it.kind === "file").every((it) => uploads.get(it.key)?.status === "verified");
       return { profile: p, rows, done, pendingAction, fullyVerified };
