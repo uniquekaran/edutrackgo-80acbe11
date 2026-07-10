@@ -44,6 +44,7 @@ import { Route as ManageCompaniesRouteImport } from './routes/manage.companies'
 import { Route as AuthAdminRouteImport } from './routes/auth.admin'
 import { Route as ApiEduaiRouteImport } from './routes/api/eduai'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminStudentsRouteImport } from './routes/admin.students'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminQuizRouteImport } from './routes/admin.quiz'
 import { Route as AdminDocumentsRouteImport } from './routes/admin.documents'
@@ -228,6 +229,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStudentsRoute = AdminStudentsRouteImport.update({
+  id: '/students',
+  path: '/students',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/admin/documents': typeof AdminDocumentsRoute
   '/admin/quiz': typeof AdminQuizRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/eduai': typeof ApiEduaiRoute
   '/auth/admin': typeof AuthAdminRoute
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/admin/documents'
     | '/admin/quiz'
     | '/admin/settings'
+    | '/admin/students'
     | '/admin/users'
     | '/api/eduai'
     | '/auth/admin'
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/documents'
     | '/admin/quiz'
     | '/admin/settings'
+    | '/admin/students'
     | '/admin/users'
     | '/api/eduai'
     | '/auth/admin'
@@ -509,6 +520,7 @@ export interface FileRouteTypes {
     | '/admin/documents'
     | '/admin/quiz'
     | '/admin/settings'
+    | '/admin/students'
     | '/admin/users'
     | '/api/eduai'
     | '/auth/admin'
@@ -804,6 +816,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/students': {
+      id: '/admin/students'
+      path: '/students'
+      fullPath: '/admin/students'
+      preLoaderRoute: typeof AdminStudentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -867,6 +886,7 @@ interface AdminRouteChildren {
   AdminDocumentsRoute: typeof AdminDocumentsRoute
   AdminQuizRoute: typeof AdminQuizRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStudentsRoute: typeof AdminStudentsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -875,6 +895,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDocumentsRoute: AdminDocumentsRoute,
   AdminQuizRoute: AdminQuizRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStudentsRoute: AdminStudentsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
