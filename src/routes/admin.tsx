@@ -49,12 +49,11 @@ function AdminLayout() {
         const { data } = await supabase.auth.getSession();
         const sessionUser = data.session?.user;
         const sessionEmail = sessionUser?.email ?? "";
-        const fallbackEmail = user?.email ?? "";
-        const email = sessionEmail || fallbackEmail;
+        const email = sessionEmail;
 
-        if (isAdminUser(email)) {
+        if (sessionUser && isAdminUser(email)) {
           const adminUser: User = {
-            id: sessionUser?.id ?? user?.id ?? "vset-admin",
+            id: sessionUser.id,
             email,
             name:
               (sessionUser?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name ??
