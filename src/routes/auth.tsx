@@ -46,6 +46,10 @@ function AuthPage() {
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [expiresAt, setExpiresAt] = useState<number>(0);
   const [now, setNow] = useState<number>(() => Math.floor(Date.now() / 1000));
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPw, setShowAdminPw] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
   
 
   useEffect(() => {
