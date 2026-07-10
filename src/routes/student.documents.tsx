@@ -122,12 +122,8 @@ function Documents() {
     setUploadingKey(null);
   }
 
-  async function deleteDoc(doc: DocRow) {
-    if (!confirm(`Delete uploaded "${doc.document_type}"?`)) return;
-    const { error } = await supabase.from("documents").delete().eq("id", doc.id);
-    if (error) return toast.error(error.message);
-    toast.success("Document removed");
-  }
+
+
 
   async function handleSavePhone() {
     setSavingForm("student_phone");
