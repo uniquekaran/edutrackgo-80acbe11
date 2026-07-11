@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, FileText, HelpCircle, Settings as SettingsIcon,
-  ShieldAlert, LogOut,
+  LogOut, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
@@ -30,90 +30,81 @@ function AdminLayout() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const loc = useLocation();
-  const [checking, setChecking] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  // authState: null = still resolving (Supabase has not emitted INITIAL_SESSION yet)
+  //            true = authorized admin, false = not authorized (redirect once)
+  const [authState, setAuthState] = useState<null | boolean>(null);
   const [sessionAdmin, setSessionAdmin] = useState<User | null>(null);
-  const checkedOnceRef = useRef(false);
+  const [redirectScheduled, setRedirectScheduled] = useState(false);
   const displayUser = user ?? sessionAdmin;
 
-  // Evaluate admin access exactly once on mount. The hardcoded admin email is
-  // granted immediately from the active auth session and never waits on roles.
+  // Single source of truth: Supabase auth events. We wait for INITIAL_SESSION
+  // before making ANY authorization decision to prevent redirect loops caused
+  // by evaluating auth before the session has been restored from storage.
   useEffect(() => {
-    if (checkedOnceRef.current) return;
-    checkedOnceRef.current = true;
-    let cancelled = false;
+    let isMounted = true;
 
-    async function decide() {
-      toast.dismiss();
-      try {
-        const { data } = await supabase.auth.getSession();
-        const sessionUser = data.session?.user;
-        const sessionEmail = sessionUser?.email ?? "";
-        const email = sessionEmail;
-
-        if (sessionUser && isAdminUser(email)) {
-          const adminUser: User = {
-            id: sessionUser.id,
-            email,
-            name:
-              (sessionUser?.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name ??
-              (sessionUser?.user_metadata as { name?: string } | undefined)?.name ??
-              user?.name ??
-              email.split("@")[0],
-            role: "admin",
-            college: user?.college ?? "AKTU",
-            department: user?.department,
-          };
-          setSessionAdmin(adminUser);
-          setCurrentUser(adminUser);
-          if (!cancelled) {
-            setAllowed(true);
-            setChecking(false);
-          }
-          return;
-        }
-      } catch {
-        // Fall through to the clean escape route below.
+    const applySession = (
+      sessionUser: { id: string; email?: string | null; user_metadata?: unknown } | null | undefined,
+    ) => {
+      const email = sessionUser?.email ?? "";
+      if (sessionUser && isAdminUser(email)) {
+        const meta = sessionUser.user_metadata as { full_name?: string; name?: string } | undefined;
+        const adminUser: User = {
+          id: sessionUser.id,
+          email,
+          name: meta?.full_name ?? meta?.name ?? user?.name ?? email.split("@")[0],
+          role: "admin",
+          college: user?.college ?? "AKTU",
+          department: user?.department,
+        };
+        setSessionAdmin(adminUser);
+        setCurrentUser(adminUser);
+        setAuthState(true);
+      } else {
+        setAuthState(false);
       }
-
-      if (!cancelled) {
-        toast.dismiss();
-        setAllowed(false);
-        setChecking(false);
-        navigate({ to: "/auth/admin", replace: true });
-      }
-    }
-
-    void decide();
-    return () => {
-      cancelled = true;
-      toast.dismiss();
     };
-    // This guard intentionally runs once per mount to avoid toast/nav loops.
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        toast.dismiss();
+        applySession(session?.user);
+      } else if (event === "SIGNED_OUT") {
+        setAuthState(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Redirect exactly once when we've conclusively determined the user is not an admin.
+  useEffect(() => {
+    if (authState === false && !redirectScheduled) {
+      setRedirectScheduled(true);
+      navigate({ to: "/auth/admin", replace: true });
+    }
+  }, [authState, redirectScheduled, navigate]);
 
-  if (checking) {
+  // Loading — do NOT redirect, do NOT evaluate other branches.
+  if (authState === null) {
     return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-center space-y-2">
-          <div className="w-10 h-10 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <p className="text-xs uppercase tracking-widest text-muted-foreground font-black">Loading admin console…</p>
+      <div className="min-h-screen grid place-items-center bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-xs uppercase tracking-widest text-muted-foreground font-black">Verifying access…</p>
         </div>
       </div>
     );
   }
 
-  if (!allowed || !displayUser) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-center space-y-2">
-          <ShieldAlert className="w-10 h-10 mx-auto text-destructive" />
-          <p className="text-sm font-bold">Redirecting…</p>
-        </div>
-      </div>
-    );
+  // Not authorized — redirect effect above handles navigation. Render nothing.
+  if (authState === false || !displayUser) {
+    return null;
   }
 
   async function handleSignOut() {
