@@ -101,12 +101,26 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
     doc.text(wrapped, margin + 120, y);
     line(14 * Math.max(1, wrapped.length));
   };
-  const writeLinkedUrl = (url: string) => {
-    const lines = doc.splitTextToSize(url, pageW - margin * 2 - 20) as string[];
-    doc.setTextColor(37, 99, 235); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  const writeLinkedUrl = (url: string | null | undefined) => {
+    ensure(12);
+    const clean = (url ?? "").trim();
+    doc.setFont("helvetica", "italic"); doc.setFontSize(9);
+    if (!clean) {
+      doc.setTextColor(150, 60, 60);
+      doc.text("— No file available (missing storage path)", margin + 20, y);
+      line(11);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "normal");
+      return;
+    }
+    const isLinkable = /^https?:\/\//i.test(clean);
+    const lines = doc.splitTextToSize(clean, pageW - margin * 2 - 20) as string[];
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(isLinkable ? 37 : 120, isLinkable ? 99 : 120, isLinkable ? 235 : 120);
     for (const chunk of lines.slice(0, 4)) {
       ensure(12);
-      doc.textWithLink(chunk, margin + 20, y, { url });
+      if (isLinkable) doc.textWithLink(chunk, margin + 20, y, { url: clean });
+      else doc.text(chunk, margin + 20, y);
       line(11);
     }
     doc.setTextColor(0);
