@@ -47,50 +47,73 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 40;
-  let y = margin;
+  const HEADER_H = 60;
+  const FOOTER_H = 30;
+  const contentTop = HEADER_H + 20;
+  const generatedAt = new Date().toLocaleString("en-IN");
+  const studentLabel = input.profile.full_name ?? input.profile.email ?? input.profile.id.slice(0, 8);
+  let y = contentTop;
 
-  const line = (h = 14) => {
-    y += h;
-    if (y > pageH - margin) { doc.addPage(); y = margin; }
+  const drawChrome = () => {
+    // Header bar
+    doc.setFillColor(30, 41, 59);
+    doc.rect(0, 0, pageW, HEADER_H, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text("EduTrack — Institutional Student Dossier", margin, 24);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text(`Student: ${studentLabel}`, margin, 42);
+    doc.text(`Generated ${generatedAt}`, pageW - margin, 42, { align: "right" });
+    doc.setTextColor(0);
+    // Footer rule
+    doc.setDrawColor(220);
+    doc.line(margin, pageH - FOOTER_H, pageW - margin, pageH - FOOTER_H);
   };
-  const writeH = (t: string, size = 16) => {
+
+  const stampFooters = () => {
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text("EduTrack · Confidential", margin, pageH - 12);
+      doc.text(`Page ${i} of ${total}`, pageW - margin, pageH - 12, { align: "right" });
+      doc.setTextColor(0);
+    }
+  };
+
+  const newPage = () => { doc.addPage(); drawChrome(); y = contentTop; };
+  const ensure = (h: number) => { if (y > pageH - FOOTER_H - h) newPage(); };
+
+  const line = (h = 14) => { y += h; if (y > pageH - FOOTER_H - 10) newPage(); };
+  const writeH = (t: string, size = 14) => {
+    ensure(size + 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(size);
     doc.text(t, margin, y); line(size + 4);
     doc.setFont("helvetica", "normal"); doc.setFontSize(11);
   };
   const writeKV = (k: string, v: string) => {
-    if (y > pageH - margin - 26) { doc.addPage(); y = margin; }
+    ensure(20);
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     doc.text(k + ":", margin, y);
     doc.setFont("helvetica", "normal");
-    const wrapped = doc.splitTextToSize(v || "—", pageW - margin * 2 - 120);
-    doc.text(wrapped as string[], margin + 120, y);
-    line(14 * Math.max(1, (wrapped as string[]).length));
+    const wrapped = doc.splitTextToSize(v || "—", pageW - margin * 2 - 120) as string[];
+    doc.text(wrapped, margin + 120, y);
+    line(14 * Math.max(1, wrapped.length));
   };
   const writeLinkedUrl = (url: string) => {
     const lines = doc.splitTextToSize(url, pageW - margin * 2 - 20) as string[];
     doc.setTextColor(37, 99, 235); doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     for (const chunk of lines.slice(0, 4)) {
-      if (y > pageH - margin - 12) { doc.addPage(); y = margin; }
+      ensure(12);
       doc.textWithLink(chunk, margin + 20, y, { url });
       line(11);
     }
     doc.setTextColor(0);
   };
-  const rule = () => {
-    doc.setDrawColor(220); doc.line(margin, y, pageW - margin, y); line(10);
-  };
+  const rule = () => { ensure(14); doc.setDrawColor(220); doc.line(margin, y, pageW - margin, y); line(10); };
 
-  // Header
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, pageW, 80, "F");
-  doc.setTextColor(255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-  doc.text("EduTrack — Janam Kundli Student Dossier", margin, 40);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-  doc.text(`Generated ${new Date().toLocaleString("en-IN")}`, margin, 60);
-  doc.setTextColor(0);
-  y = 110;
+  drawChrome();
 
   // Photo (best effort)
   if (input.profile.avatar_url) {
