@@ -200,8 +200,13 @@ function Documents() {
               const row = uploads.get(item.key);
               const rejection = row ? rejections.get(row.id) : "";
               const isUploading = uploadingKey === item.key;
+              const hasFile = !!row;
               return (
-                <div key={item.key} className="rounded-2xl bg-surface shadow-soft p-4">
+                <div
+                  key={item.key}
+                  style={{ animationDelay: `${idx * 40}ms` }}
+                  className="rounded-2xl bg-surface shadow-soft p-4 animate-fade-in transition-all duration-300 hover:shadow-elevated hover:scale-[1.01]"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0 text-xs font-black">{num}</div>
                     <div className="flex-1 min-w-0">
@@ -212,6 +217,16 @@ function Documents() {
                         <p className="text-[11px] text-muted-foreground mt-0.5">Not uploaded yet</p>
                       )}
                     </div>
+                    {hasFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreview(row!); }}
+                        aria-label={`Preview ${item.label}`}
+                        className="w-8 h-8 rounded-lg grid place-items-center bg-secondary hover:bg-accent/60 transition-colors shrink-0"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    )}
                     <StatusTag status={row ? row.status : "pending"} />
                   </div>
 
@@ -228,23 +243,30 @@ function Documents() {
                     onChange={(e) => onFile(item.key, e)}
                   />
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className={`mt-3 grid ${hasFile ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
                     <button
-                      onClick={() => pickFile(item.key)}
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); pickFile(item.key); }}
                       disabled={isUploading}
-                      className="h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-70"
+                      className={`h-11 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all disabled:opacity-70 ${
+                        hasFile
+                          ? "bg-secondary hover:bg-accent/60 text-foreground border border-border"
+                          : "gradient-primary text-primary-foreground shadow-soft hover:shadow-elevated"
+                      }`}
                     >
                       {isUploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
-                        : row ? <><RefreshCw className="w-3.5 h-3.5" /> Submit / Replace</>
-                        : <><Upload className="w-3.5 h-3.5" /> Submit / Upload</>}
+                        : hasFile ? <><RefreshCw className="w-3.5 h-3.5" /> Replace Document</>
+                        : <><Upload className="w-3.5 h-3.5" /> Upload Document</>}
                     </button>
-                    <button
-                      onClick={() => row && setPreview(row)}
-                      disabled={!row}
-                      className="h-10 rounded-xl bg-secondary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Preview
-                    </button>
+                    {hasFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setPreview(row!); }}
+                        className="h-11 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-soft hover:shadow-elevated transition-all active:scale-[0.98]"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </button>
+                    )}
                   </div>
                 </div>
               );
