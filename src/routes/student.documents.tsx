@@ -418,14 +418,14 @@ function PreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void }) {
 
 export function StatusTag({ status }: { status: DocStatus }) {
   const map = {
-    pending:   { Icon: Clock,        label: "Pending",   cls: "bg-muted text-muted-foreground border-border" },
-    submitted: { Icon: Upload,       label: "Submitted", cls: "bg-warning/15 text-warning-foreground border-warning/30" },
-    verified:  { Icon: CheckCircle2, label: "Verified",  cls: "bg-success/15 text-success border-success/30" },
-    rejected:  { Icon: XCircle,      label: "Rejected",  cls: "bg-destructive/10 text-destructive border-destructive/30" },
+    pending:   { Icon: Clock,        label: "Pending",   cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-[0_0_12px_-2px_rgba(245,158,11,0.5)]" },
+    submitted: { Icon: Upload,       label: "Submitted", cls: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/40 shadow-[0_0_12px_-2px_rgba(14,165,233,0.5)]" },
+    verified:  { Icon: CheckCircle2, label: "Verified",  cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-[0_0_14px_-2px_rgba(16,185,129,0.55)]" },
+    rejected:  { Icon: XCircle,      label: "Rejected",  cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-[0_0_14px_-2px_rgba(244,63,94,0.55)]" },
   } as const;
   const { Icon, label, cls } = map[status] ?? map.pending;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all ${cls}`}>
       <Icon className="w-3 h-3" /> {label}
     </span>
   );
