@@ -156,7 +156,7 @@ function Documents() {
 
       {/* Progress */}
       <section className="px-5">
-        <div className="rounded-2xl bg-surface shadow-soft p-5">
+        <div className="rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Progress</p>
@@ -200,8 +200,13 @@ function Documents() {
               const row = uploads.get(item.key);
               const rejection = row ? rejections.get(row.id) : "";
               const isUploading = uploadingKey === item.key;
+              const hasFile = !!row;
               return (
-                <div key={item.key} className="rounded-2xl bg-surface shadow-soft p-4">
+                <div
+                  key={item.key}
+                  style={{ animationDelay: `${idx * 40}ms` }}
+                  className="rounded-2xl bg-surface shadow-soft p-4 animate-fade-in transition-all duration-300 hover:shadow-elevated hover:scale-[1.01]"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0 text-xs font-black">{num}</div>
                     <div className="flex-1 min-w-0">
@@ -212,6 +217,16 @@ function Documents() {
                         <p className="text-[11px] text-muted-foreground mt-0.5">Not uploaded yet</p>
                       )}
                     </div>
+                    {hasFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreview(row!); }}
+                        aria-label={`Preview ${item.label}`}
+                        className="w-8 h-8 rounded-lg grid place-items-center bg-secondary hover:bg-accent/60 transition-colors shrink-0"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    )}
                     <StatusTag status={row ? row.status : "pending"} />
                   </div>
 
@@ -228,23 +243,30 @@ function Documents() {
                     onChange={(e) => onFile(item.key, e)}
                   />
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className={`mt-3 grid ${hasFile ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
                     <button
-                      onClick={() => pickFile(item.key)}
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); pickFile(item.key); }}
                       disabled={isUploading}
-                      className="h-10 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-70"
+                      className={`h-11 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all disabled:opacity-70 ${
+                        hasFile
+                          ? "bg-secondary hover:bg-accent/60 text-foreground border border-border"
+                          : "gradient-primary text-primary-foreground shadow-soft hover:shadow-elevated"
+                      }`}
                     >
                       {isUploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading…</>
-                        : row ? <><RefreshCw className="w-3.5 h-3.5" /> Submit / Replace</>
-                        : <><Upload className="w-3.5 h-3.5" /> Submit / Upload</>}
+                        : hasFile ? <><RefreshCw className="w-3.5 h-3.5" /> Replace Document</>
+                        : <><Upload className="w-3.5 h-3.5" /> Upload Document</>}
                     </button>
-                    <button
-                      onClick={() => row && setPreview(row)}
-                      disabled={!row}
-                      className="h-10 rounded-xl bg-secondary text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Preview
-                    </button>
+                    {hasFile && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setPreview(row!); }}
+                        className="h-11 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-soft hover:shadow-elevated transition-all active:scale-[0.98]"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -396,14 +418,14 @@ function PreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void }) {
 
 export function StatusTag({ status }: { status: DocStatus }) {
   const map = {
-    pending:   { Icon: Clock,        label: "Pending",   cls: "bg-muted text-muted-foreground border-border" },
-    submitted: { Icon: Upload,       label: "Submitted", cls: "bg-warning/15 text-warning-foreground border-warning/30" },
-    verified:  { Icon: CheckCircle2, label: "Verified",  cls: "bg-success/15 text-success border-success/30" },
-    rejected:  { Icon: XCircle,      label: "Rejected",  cls: "bg-destructive/10 text-destructive border-destructive/30" },
+    pending:   { Icon: Clock,        label: "Pending",   cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40 shadow-[0_0_12px_-2px_rgba(245,158,11,0.5)]" },
+    submitted: { Icon: Upload,       label: "Submitted", cls: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/40 shadow-[0_0_12px_-2px_rgba(14,165,233,0.5)]" },
+    verified:  { Icon: CheckCircle2, label: "Verified",  cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-[0_0_14px_-2px_rgba(16,185,129,0.55)]" },
+    rejected:  { Icon: XCircle,      label: "Rejected",  cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40 shadow-[0_0_14px_-2px_rgba(244,63,94,0.55)]" },
   } as const;
   const { Icon, label, cls } = map[status] ?? map.pending;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all ${cls}`}>
       <Icon className="w-3 h-3" /> {label}
     </span>
   );
