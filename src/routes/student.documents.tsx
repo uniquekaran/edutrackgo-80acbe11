@@ -156,7 +156,7 @@ function Documents() {
 
       {/* Progress */}
       <section className="px-5">
-        <div className="rounded-2xl bg-surface shadow-soft p-5">
+        <div className="rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Progress</p>
