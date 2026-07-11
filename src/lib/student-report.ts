@@ -119,25 +119,28 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   if (input.profile.avatar_url) {
     const dataUrl = await loadImageAsDataUrl(input.profile.avatar_url);
     if (dataUrl) {
-      try { doc.addImage(dataUrl, "JPEG", pageW - margin - 90, 100, 90, 110); }
+      try { doc.addImage(dataUrl, "JPEG", pageW - margin - 90, contentTop, 90, 110); }
       catch { /* ignore */ }
     }
   }
 
-  writeH("Full Personal Profile", 14);
+  writeH("Bio-Data");
   writeKV("Full Name", input.profile.full_name ?? "—");
   writeKV("Student ID", input.profile.id);
   writeKV("Email", input.profile.email ?? "—");
-  writeKV("Verified Student Mobile", input.profile.phone ?? "—");
-  writeKV("Verified Father Mobile", input.fatherPhone || "—");
   writeKV("College", input.profile.college ?? "—");
   writeKV("Course Track", input.profile.department ?? input.profile.batch ?? "—");
   writeKV("Department", input.profile.department ?? "—");
   writeKV("Batch", input.profile.batch ?? "—");
-  writeKV("Absolute Registration Date", input.profile.created_at ? new Date(input.profile.created_at).toLocaleString("en-IN") : "—");
+  writeKV("Registration Date", input.profile.created_at ? new Date(input.profile.created_at).toLocaleString("en-IN") : "—");
   rule();
 
-  writeH("Entrance Exam Card", 14);
+  writeH("Contact Matrix");
+  writeKV("Student Mobile", input.profile.phone ?? "—");
+  writeKV("Father Mobile", input.fatherPhone || "—");
+  rule();
+
+  writeH("Entrance Exam");
   writeKV("Exam Name", input.exam.examName || "—");
   writeKV("Earned Score", input.exam.score || "—");
   writeKV("Secure Rank", input.exam.rank || "—");
@@ -145,11 +148,10 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   rule();
 
   const uploads = latestByType(input.rows);
-  doc.addPage();
-  y = margin;
-  writeH("11-Point Validation Checklist Matrix", 14);
+  newPage();
+  writeH("11-Point Document Verification");
   for (const it of REQUIRED_DOCS) {
-    if (y > pageH - margin - 70) { doc.addPage(); y = margin; }
+    ensure(60);
     if (it.kind === "form") {
       const done =
         it.formField === "student_phone" ? !!input.profile.phone :
@@ -174,7 +176,7 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   }
   rule();
 
-  writeH("Uploaded Asset Links", 14);
+  writeH("Uploaded Asset Links");
   const real = input.rows.filter((r) => !r.document_type.startsWith("__meta:"));
   if (real.length === 0) writeKV("(none)", "");
   for (const r of real) {
@@ -184,6 +186,9 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
     writeLinkedUrl(r.file_url);
   }
 
+  stampFooters();
+
   const filename = `${safeName(input.profile.full_name)}_${input.profile.id.slice(0, 8)}_CompleteData.pdf`;
   doc.save(filename);
 }
+
