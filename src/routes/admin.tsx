@@ -31,7 +31,6 @@ function AdminLayoutComponent() {
 
   const [authState, setAuthState] = useState<null | boolean>(null);
   const [sessionAdmin, setSessionAdmin] = useState<User | null>(null);
-  const initRef = useRef(false);
   const navRef = useRef(navigate);
 
   useEffect(() => {
@@ -41,9 +40,7 @@ function AdminLayoutComponent() {
   const displayUser = storeUser ?? sessionAdmin;
 
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-
+    console.log("=== ADMIN EFFECT START ===");
     let isMounted = true;
     let decided = false;
 
@@ -86,7 +83,10 @@ function AdminLayoutComponent() {
     supabase.auth.getSession().then(({ data }) => decide(data.session ?? null));
 
     // Force a decision after 5s if getSession() never resolves.
-    const timeout = setTimeout(() => decide(null), 5000);
+    const timeout = setTimeout(() => {
+      console.log("Timeout fired, forcing decision");
+      decide(null);
+    }, 5000);
 
     return () => {
       isMounted = false;
