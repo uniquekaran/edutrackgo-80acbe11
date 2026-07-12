@@ -98,6 +98,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "EduTrack — Modern College Management" },
       { name: "twitter:description", content: "Attendance, documents, and announcements for students and administrators." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/bc2de1af-f6de-4144-af2a-c79f67bb9600" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/bc2de1af-f6de-4144-af2a-c79f67bb9600" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
