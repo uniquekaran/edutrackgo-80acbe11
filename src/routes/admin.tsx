@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -32,11 +32,18 @@ function AdminLayoutComponent() {
   const [authState, setAuthState] = useState<null | boolean>(null);
   const [sessionAdmin, setSessionAdmin] = useState<User | null>(null);
   const [redirectScheduled, setRedirectScheduled] = useState(false);
+  const didCheckRef = useRef(false);
+
 
   const displayUser = storeUser ?? sessionAdmin;
 
   useEffect(() => {
+    if (didCheckRef.current) return;
+    didCheckRef.current = true;
+
     let isMounted = true;
+
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
