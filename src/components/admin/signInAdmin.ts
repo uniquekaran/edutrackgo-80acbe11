@@ -5,6 +5,13 @@ import { ensureMasterAdmin } from "@/lib/admin-bootstrap.functions";
 export interface AdminSignInResult {
   ok: boolean;
   error?: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    role: "admin";
+    college: string;
+  };
 }
 
 /**
@@ -68,5 +75,17 @@ export async function signInAdmin(params: {
     }
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    user: {
+      id: data.user.id,
+      email,
+      name:
+        (data.user.user_metadata as { full_name?: string; name?: string } | undefined)?.full_name ??
+        (data.user.user_metadata as { name?: string } | undefined)?.name ??
+        email.split("@")[0],
+      role: "admin",
+      college: profile?.college ?? college,
+    },
+  };
 }

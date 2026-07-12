@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore } from "@/lib/store";
+import { setCurrentUser, useStore } from "@/lib/store";
 import { isAdminUser } from "@/lib/auth-helpers";
 import { signInAdmin } from "@/components/admin/signInAdmin";
 
@@ -70,6 +70,7 @@ function AdminAuthPage() {
         setPwLoading(false);
         return;
       }
+      if (res.user) setCurrentUser(res.user);
       toast.success("Signed in as administrator");
       navigate({ to: "/admin" });
     } catch (err) {
