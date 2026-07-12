@@ -15,7 +15,7 @@ import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 function isAdminUser(email: string): boolean {
-  return email === "vset.official@gmail.com";
+  return email.trim().toLowerCase() === "vset.official@gmail.com";
 }
 
 const NAV: Array<{ to: string; label: string; icon: typeof Users; exact?: boolean }> = [
@@ -53,9 +53,12 @@ function AdminLayoutComponent() {
       toast.dismiss();
 
       const sessionUser = session?.user;
-      const email = sessionUser?.email ?? "";
+      const email = (sessionUser?.email ?? "").trim().toLowerCase();
+      const isAdmin = isAdminUser(email);
+      console.log("Email from Supabase:", email);
+      console.log("Is admin:", isAdmin);
 
-      if (sessionUser && isAdminUser(email)) {
+      if (sessionUser && isAdmin) {
         const meta = sessionUser.user_metadata as
           | { full_name?: string; name?: string; college?: string; department?: string }
           | undefined;
@@ -70,10 +73,12 @@ function AdminLayoutComponent() {
         setSessionAdmin(adminUser);
         setCurrentUser(adminUser);
         setAuthState(true);
+        console.log("AuthState set to:", true);
       } else {
         // Clear any stale store user so /auth/admin doesn't bounce us back.
         clearLocalUser();
         setAuthState(false);
+        console.log("AuthState set to:", false);
       }
     };
 
