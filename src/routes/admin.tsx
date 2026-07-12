@@ -31,68 +31,71 @@ function AdminLayoutComponent() {
 
   const [authState, setAuthState] = useState<null | boolean>(null);
   const [sessionAdmin, setSessionAdmin] = useState<User | null>(null);
-  const [redirectScheduled, setRedirectScheduled] = useState(false);
-  const didCheckRef = useRef(false);
+  const initRef = useRef(false);
+  const navRef = useRef(navigate);
 
+  useEffect(() => {
+    navRef.current = navigate;
+  }, [navigate]);
 
   const displayUser = storeUser ?? sessionAdmin;
 
   useEffect(() => {
-    if (didCheckRef.current) return;
-    didCheckRef.current = true;
+    if (initRef.current) return;
+    initRef.current = true;
 
     let isMounted = true;
+    let decided = false;
 
+    const decide = (session: import("@supabase/supabase-js").Session | null) => {
+      if (!isMounted || decided) return;
+      decided = true;
+      toast.dismiss();
 
+      const sessionUser = session?.user;
+      const email = sessionUser?.email ?? "";
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!isMounted) return;
-
-      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
-        toast.dismiss();
-
-        const sessionUser = session?.user;
-        const email = sessionUser?.email ?? "";
-
-        if (sessionUser && isAdminUser(email)) {
-          const meta = sessionUser.user_metadata as
-            | { full_name?: string; name?: string; college?: string; department?: string }
-            | undefined;
-
-          const adminUser: User = {
-            id: sessionUser.id,
-            email,
-            name: meta?.full_name ?? meta?.name ?? email.split("@")[0],
-            role: "admin",
-            college: meta?.college ?? "AKTU",
-            department: meta?.department,
-          };
-
-          setSessionAdmin(adminUser);
-          setCurrentUser(adminUser);
-          setAuthState(true);
-        } else {
-          setAuthState(false);
-        }
-      } else if (event === "SIGNED_OUT") {
-        setSessionAdmin(null);
+      if (sessionUser && isAdminUser(email)) {
+        const meta = sessionUser.user_metadata as
+          | { full_name?: string; name?: string; college?: string; department?: string }
+          | undefined;
+        const adminUser: User = {
+          id: sessionUser.id,
+          email,
+          name: meta?.full_name ?? meta?.name ?? email.split("@")[0],
+          role: "admin",
+          college: meta?.college ?? "AKTU",
+          department: meta?.department,
+        };
+        setSessionAdmin(adminUser);
+        setCurrentUser(adminUser);
+        setAuthState(true);
+      } else {
+        // Clear any stale store user so /auth/admin doesn't bounce us back.
+        clearLocalUser();
         setAuthState(false);
       }
-    });
+    };
+
+    // Trust getSession() as the single source of truth for initial mount.
+    supabase.auth.getSession().then(({ data }) => decide(data.session ?? null));
+
+    // Force a decision after 5s if getSession() never resolves.
+    const timeout = setTimeout(() => decide(null), 5000);
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      decided = true;
+      clearTimeout(timeout);
       toast.dismiss();
     };
   }, []);
 
   useEffect(() => {
-    if (authState === false && !redirectScheduled) {
-      setRedirectScheduled(true);
-      navigate({ to: "/auth/admin", replace: true });
+    if (authState === false) {
+      navRef.current({ to: "/auth/admin", replace: true });
     }
-  }, [authState, redirectScheduled, navigate]);
+  }, [authState]);
 
   if (authState === null) {
     return (
