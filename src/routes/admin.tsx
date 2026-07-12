@@ -90,7 +90,7 @@ function AdminLayoutComponent() {
 
     return () => {
       isMounted = false;
-      decided = true;
+      // Do NOT set decided=true here — initRef already guards duplicate runs.
       clearTimeout(timeout);
       toast.dismiss();
     };
