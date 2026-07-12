@@ -7,6 +7,7 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { setCurrentUser, useStore } from "@/lib/store";
 import { sendOtp, verifyOtp } from "@/lib/otp.functions";
+import { signInAdmin } from "@/components/admin/signInAdmin";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -26,9 +27,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Step = "enter-phone" | "verify-otp" | "admin-login";
-
-const ADMIN_EMAIL = "vset.official@gmail.com";
-const ADMIN_PASSWORD = "VSET2026";
 
 function friendly(msg?: string | null): string {
   const m = (msg ?? "").toLowerCase();
@@ -172,20 +170,15 @@ function AuthPage() {
     }
     setAdminLoading(true);
     try {
-      // Hardcoded master admin fallback.
-      if (email === ADMIN_EMAIL.toLowerCase() && pw === ADMIN_PASSWORD) {
-        try { await supabase.auth.signOut(); } catch { /* ignore */ }
-        setCurrentUser({
-          id: "admin-vset",
-          name: "VSET Admin",
-          email: ADMIN_EMAIL,
-          role: "admin",
-        });
-        toast.success("Signed in as administrator");
-        navigate({ to: "/admin" });
+      const res = await signInAdmin({ email, password: pw, college: "AKTU" });
+      if (!res.ok) {
+        toast.error(res.error || "Invalid administrator credentials.");
         return;
       }
-      toast.error("Invalid administrator credentials.");
+      if (res.user) setCurrentUser(res.user);
+      toast.success("Signed in as administrator");
+      navigate({ to: "/admin" });
+      return;
     } catch (err) {
       toast.error(friendly(err instanceof Error ? err.message : null));
     } finally {
