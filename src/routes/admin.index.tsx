@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Users, HelpCircle, FileText, Activity, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Users, HelpCircle, FileText, Activity, Sparkles, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatISTDateTime } from "@/lib/format";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { REQUIRED_DOCS, isMetaRow, latestByType, type DocRow } from "@/lib/student-docs";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -37,6 +38,8 @@ function AdminDashboard() {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [chart, setChart] = useState<Array<{ day: string; users: number }>>([]);
   const [diagnostics, setDiagnostics] = useState<DashboardDiagnostic[]>([]);
+  const [profiles, setProfiles] = useState<Array<{ id: string }>>([]);
+  const [allDocs, setAllDocs] = useState<DocRow[]>([]);
 
   useEffect(() => {
     async function fetchAll() {
@@ -53,6 +56,13 @@ function AdminDashboard() {
       if (!d.error && (d.data ?? []).length === 0) nextDiagnostics.push({ level: "warning", message: "Connection Warning: documents query returned 0 rows on the dashboard. No frontend role or tenant filters were applied." });
       const users = u.data ?? [];
       const documents = d.data ?? [];
+      setProfiles(users.map((p) => ({ id: p.id })));
+      // Refetch documents with full columns for per-student status computation.
+      const { data: fullDocs } = await supabase
+        .from("documents")
+        .select("*")
+        .limit(20000);
+      setAllDocs((fullDocs ?? []) as DocRow[]);
       setCounts({
         users: users.length,
         questions: q.count ?? 0,
@@ -89,11 +99,49 @@ function AdminDashboard() {
     return () => { supabase.removeChannel(ch); };
   }, []);
 
+  // Compute document-status analytics across every student.
+  // A required file that hasn't been uploaded counts as Pending, matching the
+  // "Pending / No Data" placeholder used elsewhere in the app.
+  const docStats = useMemo(() => {
+    let verified = 0;
+    let pending = 0;
+    let rejected = 0;
+    const requiredFileKeys = REQUIRED_DOCS.filter((it) => it.kind === "file").map((it) => it.key);
+    // Group latest uploads per student.
+    const byStudent = new Map<string, DocRow[]>();
+    for (const d of allDocs) {
+      if (isMetaRow(d)) continue;
+      const list = byStudent.get(d.student_id) ?? [];
+      list.push(d);
+      byStudent.set(d.student_id, list);
+    }
+    for (const p of profiles) {
+      const rows = byStudent.get(p.id) ?? [];
+      const uploads = latestByType(rows);
+      for (const key of requiredFileKeys) {
+        const row = uploads.get(key);
+        if (!row) pending++;
+        else if (row.status === "verified") verified++;
+        else if (row.status === "rejected") rejected++;
+        else pending++;
+      }
+    }
+    return { verified, pending, rejected };
+  }, [profiles, allDocs]);
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Overview</p>
         <h1 className="text-2xl font-black">Dashboard</h1>
+      </div>
+
+      {/* Analytics summary — updates reactively via realtime subscriptions. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Total Students" value={counts.users} icon={<Users className="w-4 h-4" />} tone="default" />
+        <StatCard label="Verified Documents" value={docStats.verified} icon={<CheckCircle2 className="w-4 h-4" />} tone="success" />
+        <StatCard label="Pending Documents" value={docStats.pending} icon={<Clock className="w-4 h-4" />} tone="warning" />
+        <StatCard label="Rejected Documents" value={docStats.rejected} icon={<XCircle className="w-4 h-4" />} tone="danger" />
       </div>
 
       {diagnostics.length > 0 && (
@@ -149,14 +197,20 @@ function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+function StatCard({ label, value, icon, tone }: { label: string; value: number; icon: React.ReactNode; tone?: "default" | "success" | "warning" | "danger" }) {
+  const toneCls = {
+    default: "text-foreground",
+    success: "text-success",
+    warning: "text-warning-foreground",
+    danger: "text-destructive",
+  }[tone ?? "default"];
   return (
     <div className="rounded-2xl bg-surface border border-border p-4 shadow-soft">
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
         <p className="text-[10px] font-bold uppercase tracking-wider">{label}</p>
       </div>
-      <p className="text-3xl font-black mt-1.5">{value}</p>
+      <p className={`text-3xl font-black mt-1.5 ${toneCls}`}>{value}</p>
     </div>
   );
 }

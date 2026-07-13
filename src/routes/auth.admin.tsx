@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, ShieldCheck, KeyRound, ShieldAlert, Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, KeyRound, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
-import { setCurrentUser, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { isAdminUser } from "@/lib/auth-helpers";
-import { signInAdmin } from "@/components/admin/signInAdmin";
 
 export const Route = createFileRoute("/auth/admin")({
   head: () => ({ meta: [{ title: "Administrator sign in — EduTrack" }] }),
@@ -18,10 +17,6 @@ function AdminAuthPage() {
   const navigate = useNavigate();
   const user = useStore((s) => s.user);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [pwLoading, setPwLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -55,30 +50,6 @@ function AdminAuthPage() {
     }
   }
 
-  async function handleEmailLogin(e: React.FormEvent) {
-    e.preventDefault();
-    if (pwLoading) return;
-    if (!email.trim() || !password) {
-      toast.error("Enter both email and password.");
-      return;
-    }
-    setPwLoading(true);
-    try {
-      const res = await signInAdmin({ email, password, college: "AKTU" });
-      if (!res.ok) {
-        toast.error(res.error || "Login failed.");
-        setPwLoading(false);
-        return;
-      }
-      if (res.user) setCurrentUser(res.user);
-      toast.success("Signed in as administrator");
-      navigate({ to: "/admin" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Login failed.");
-      setPwLoading(false);
-    }
-  }
-
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
@@ -99,70 +70,10 @@ function AdminAuthPage() {
 
       <div className="flex-1 px-6 -mt-6 pb-8 space-y-4">
         <div className="rounded-3xl bg-surface shadow-soft p-6">
-          <form onSubmit={handleEmailLogin} className="space-y-3">
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Email address</label>
-              <div className="mt-1.5 relative">
-                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={pwLoading}
-                  className="w-full h-12 pl-10 pr-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40"
-                  placeholder="admin@example.com"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Password</label>
-              <div className="mt-1.5 relative">
-                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type={showPw ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={pwLoading}
-                  className="w-full h-12 pl-10 pr-10 rounded-xl bg-secondary text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-muted-foreground rounded-lg hover:bg-accent/50"
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={pwLoading}
-              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold shadow-elevated active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-70"
-            >
-              {pwLoading ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Logging in…</>
-              ) : (
-                <>Login</>
-              )}
-            </button>
-          </form>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">or</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
           <button
             onClick={handleGoogle}
             disabled={googleLoading}
-            className="w-full h-12 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
+            className="w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
           >
             {googleLoading ? (
               <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
