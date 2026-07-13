@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save,
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save, AlertTriangle,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,9 @@ function Documents() {
   const [loading, setLoading] = useState(true);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<DocRow | null>(null);
+  // Anti-blur confirmation state.
+  const [pendingUpload, setPendingUpload] = useState<{ key: string; file: File; previewUrl: string | null } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [studentPhone, setStudentPhone] = useState("");
   const [fatherPhone, setFatherPhone] = useState("");
   const [exam, setExam] = useState<EntranceExam>({ ...EMPTY_EXAM });
@@ -79,7 +82,7 @@ function Documents() {
     fileRefs.current[key]?.click();
   }
 
-  async function onFile(key: string, e: React.ChangeEvent<HTMLInputElement>) {
+  function onFile(key: string, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -90,6 +93,27 @@ function Documents() {
       toast.error("Only PDF, JPG, or PNG files are accepted.");
       return;
     }
+    // Discard any previous preview state, then open the confirmation modal.
+    if (pendingUpload?.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
+    const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png"].includes(ext);
+    setPendingUpload({
+      key,
+      file,
+      previewUrl: isImage ? URL.createObjectURL(file) : null,
+    });
+    setConfirmClear(false);
+  }
+
+  function cancelPendingUpload() {
+    if (pendingUpload?.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
+    setPendingUpload(null);
+    setConfirmClear(false);
+  }
+
+  async function confirmUpload() {
+    if (!pendingUpload || !confirmClear) return;
+    const { key, file } = pendingUpload;
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
     setUploadingKey(key);
     let fileUrl = "";
     try {
@@ -120,6 +144,7 @@ function Documents() {
     if (insErr) toast.error(insErr.message);
     else toast.success(`${key} submitted`);
     setUploadingKey(null);
+    cancelPendingUpload();
   }
 
 
@@ -154,8 +179,23 @@ function Documents() {
         <p className="text-sm text-muted-foreground mt-1">Upload the 11 required items and keep your details up to date.</p>
       </header>
 
-      {/* Progress */}
+      {/* Important instructions — anti-blur, on-time, responsibility notice. */}
       <section className="px-5">
+        <div className="rounded-2xl border-2 border-amber-500/60 bg-amber-500/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-[13px] leading-relaxed text-foreground">
+            <p className="font-bold flex items-center gap-1.5">📌 Important Instructions:</p>
+            <ul className="mt-1.5 space-y-1 list-disc pl-5">
+              <li>All documents must be scanned clearly and be 100% legible. No blurry photos.</li>
+              <li>Upload each document properly in its designated slot.</li>
+              <li>Failure to submit on time may delay your admission. The student is solely responsible.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Progress */}
+      <section className="px-5 mt-4">
         <div className="rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated">
           <div className="flex items-center justify-between">
             <div>
@@ -302,6 +342,87 @@ function Documents() {
       )}
 
       {preview && <PreviewModal doc={preview} onClose={() => setPreview(null)} />}
+      {pendingUpload && (
+        <AntiBlurModal
+          fileName={pendingUpload.file.name}
+          previewUrl={pendingUpload.previewUrl}
+          slotLabel={REQUIRED_DOCS.find((d) => d.key === pendingUpload.key)?.label ?? pendingUpload.key}
+          confirmed={confirmClear}
+          setConfirmed={setConfirmClear}
+          uploading={uploadingKey === pendingUpload.key}
+          onCancel={cancelPendingUpload}
+          onConfirm={confirmUpload}
+        />
+      )}
+    </div>
+  );
+}
+
+function AntiBlurModal(props: {
+  fileName: string;
+  previewUrl: string | null;
+  slotLabel: string;
+  confirmed: boolean;
+  setConfirmed: (v: boolean) => void;
+  uploading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { fileName, previewUrl, slotLabel, confirmed, setConfirmed, uploading, onCancel, onConfirm } = props;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onCancel}>
+      <div className="bg-surface w-full max-w-md max-h-[92vh] rounded-3xl shadow-elevated flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-border">
+          <FileText className="w-4 h-4 text-primary" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Confirm upload</p>
+            <p className="text-sm font-bold truncate">{slotLabel}</p>
+          </div>
+          <button onClick={onCancel} className="w-8 h-8 rounded-lg grid place-items-center hover:bg-accent/50" aria-label="Cancel">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto bg-secondary/40 grid place-items-center p-4">
+          {previewUrl ? (
+            <img src={previewUrl} alt={fileName} className="max-w-full max-h-[52vh] rounded-2xl border border-border bg-white object-contain" />
+          ) : (
+            <div className="text-center p-6">
+              <FileText className="w-10 h-10 mx-auto text-primary" />
+              <p className="mt-3 text-sm font-bold">PDF file selected — ready to upload</p>
+              <p className="mt-1 text-xs text-muted-foreground break-all">{fileName}</p>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-border space-y-3">
+          <label className="flex items-start gap-2.5 text-[12px] leading-relaxed cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+            />
+            <span className="text-foreground font-semibold">I confirm this document is perfectly clear and readable.</span>
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={uploading}
+              className="flex-1 h-11 rounded-xl bg-secondary text-sm font-bold disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={!confirmed || uploading}
+              className="flex-1 h-11 rounded-xl gradient-primary text-primary-foreground text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+            >
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : <><Upload className="w-4 h-4" /> Confirm & Upload</>}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
