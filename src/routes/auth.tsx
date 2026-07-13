@@ -124,62 +124,6 @@ function GoogleIcon({ className }: { className?: string }) {
       <path fill="#EA4335" d="M12 5.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C16.96 2.99 14.695 2 12 2A9.996 9.996 0 0 0 3.064 7.51l3.338 2.59C7.19 7.737 9.395 5.977 12 5.977Z" />
     </svg>
   );
-}
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                    A 6-digit code was sent to +{normalizedPhone}. It expires in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Mobile number</label>
-                <div className="mt-1.5 h-12 px-4 rounded-2xl border border-border bg-background text-sm font-semibold text-foreground flex items-center">
-                  +{normalizedPhone}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">6-digit code</label>
-                <div className="mt-1.5">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="123456"
-                    className="w-full h-14 px-4 rounded-2xl border border-border bg-background text-center text-2xl font-bold tracking-[0.5em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={verifying}
-                className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-70 shadow-soft"
-              >
-                {verifying ? (<><Loader2 className="w-4 h-4 animate-spin" /> Verifying OTP…</>) : (<><ShieldCheck className="w-4 h-4" /> Verify OTP</>)}
-              </button>
-
-              <div className="flex items-center justify-between text-[11px]">
-                <button type="button" onClick={() => setStep("enter-phone")} className="text-muted-foreground hover:text-foreground font-semibold">← Change number</button>
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resending || !canResend}
-                  className="text-primary font-semibold hover:underline disabled:opacity-50 disabled:no-underline inline-flex items-center gap-1"
-                >
-                  {resending ? (<><Loader2 className="w-3 h-3 animate-spin" /> Resending OTP…</>) : canResend ? "Resend OTP" : `Resend in ${secondsLeft}s`}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </MobileShell>
-  );
-}
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
