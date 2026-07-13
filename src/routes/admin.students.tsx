@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2, Clock, XCircle, Eye, ExternalLink, Loader2, Search, User as UserIcon,
-  FileText, Download, ChevronLeft, Users as UsersIcon, Upload,
+  FileText, Download, ChevronLeft, Users as UsersIcon, Upload, FileDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -186,6 +186,51 @@ function AdminStudents() {
       || s.profile.id.toLowerCase().includes(n);
   });
 
+  // Overall status per student: Rejected > Pending > Verified.
+  function overallStatus(rows: DocRow[]): "Rejected" | "Pending" | "Verified" {
+    const uploads = latestByType(rows);
+    let anyRejected = false;
+    let anyPending = false;
+    for (const it of REQUIRED_DOCS.filter((x) => x.kind === "file")) {
+      const row = uploads.get(it.key);
+      if (!row) { anyPending = true; continue; }
+      if (row.status === "rejected") anyRejected = true;
+      else if (row.status !== "verified") anyPending = true;
+    }
+    if (anyRejected) return "Rejected";
+    if (anyPending) return "Pending";
+    return "Verified";
+  }
+
+  function csvEscape(v: string): string {
+    if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  }
+
+  function handleExportCsv() {
+    const header = ["Name", "Email", "Status"];
+    const lines = [header.join(",")];
+    for (const s of summaries) {
+      const status = overallStatus(s.rows);
+      lines.push([
+        csvEscape(s.profile.full_name ?? ""),
+        csvEscape(s.profile.email ?? ""),
+        status,
+      ].join(","));
+    }
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `eduTrack_students_${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   if (openId) {
     const s = summaries.find((x) => x.profile.id === openId);
     if (s) return <StudentDetail summary={{ profile: s.profile, rows: s.rows }} onBack={() => setOpenId(null)} onChanged={load} />;
@@ -193,10 +238,19 @@ function AdminStudents() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Directory</p>
-        <h1 className="text-2xl font-black">Master Student List</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Click any student to open their full 360° profile.</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Directory</p>
+          <h1 className="text-2xl font-black">Master Student List</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Click any student to open their full 360° profile.</p>
+        </div>
+        <button
+          onClick={handleExportCsv}
+          disabled={loading || summaries.length === 0}
+          className="h-10 px-4 rounded-xl gradient-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-2 disabled:opacity-60 shadow-soft"
+        >
+          <FileDown className="w-4 h-4" /> Export to CSV
+        </button>
       </div>
 
       {diagnostics.length > 0 && (
