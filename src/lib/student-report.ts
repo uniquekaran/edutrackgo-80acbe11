@@ -80,14 +80,23 @@ export async function downloadStudentPackage(input: StudentPackageInput) {
   const studentLabel = input.profile.full_name ?? input.profile.email ?? input.profile.id.slice(0, 8);
 
   const drawChrome = () => {
+    // Page border
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(1.2);
+    doc.rect(18, 18, pageW - 36, pageH - 36);
+    doc.setLineWidth(0.4);
+    doc.setDrawColor(120, 130, 150);
+    doc.rect(22, 22, pageW - 44, pageH - 44);
+
+    // Header band
     doc.setFillColor(30, 41, 59);
-    doc.rect(0, 0, pageW, HEADER_H, "F");
+    doc.rect(22, 22, pageW - 44, HEADER_H - 22, "F");
     doc.setTextColor(255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-    doc.text("EduTrack — Institutional Student Dossier", margin, 24);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+    doc.text("EDUTRACK OFFICIAL STUDENT DOSSIER", pageW / 2, 44, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(`Student: ${studentLabel}`, margin, 42);
-    doc.text(`Generated ${generatedAt}`, pageW - margin, 42, { align: "right" });
+    doc.text(`Student: ${studentLabel}`, margin, HEADER_H + 4);
+    doc.text(`Generated ${generatedAt}`, pageW - margin, HEADER_H + 4, { align: "right" });
     doc.setTextColor(0);
     doc.setDrawColor(220);
     doc.line(margin, pageH - FOOTER_H, pageW - margin, pageH - FOOTER_H);
