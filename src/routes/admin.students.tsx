@@ -37,7 +37,7 @@ interface StudentSummary {
   rows: DocRow[];
 }
 
-type FilterKind = "all" | "pending" | "verified";
+type FilterKind = "all" | "pending" | "verified" | "rejected";
 type DbDiagnostic = { source: "profiles" | "documents" | "client"; level: "error" | "warning"; message: string };
 
 function formatDbError(source: "profiles" | "documents", error: unknown) {
@@ -173,11 +173,13 @@ function AdminStudents() {
     all: summaries.length,
     pending: summaries.filter((s) => s.pendingAction).length,
     verified: summaries.filter((s) => s.fullyVerified).length,
+    rejected: summaries.filter((s) => overallStatus(s.rows) === "Rejected").length,
   }), [summaries]);
 
   const filtered = summaries.filter((s) => {
     if (filter === "pending" && !s.pendingAction) return false;
     if (filter === "verified" && !s.fullyVerified) return false;
+    if (filter === "rejected" && overallStatus(s.rows) !== "Rejected") return false;
     if (!q) return true;
     const n = q.toLowerCase();
     return (s.profile.full_name ?? "").toLowerCase().includes(n)
@@ -274,13 +276,26 @@ function AdminStudents() {
       </div>
 
       <div className="rounded-2xl bg-surface border border-border shadow-soft p-4">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, email, mobile, or student ID"
-            className="w-full h-10 pl-9 pr-3 rounded-xl bg-secondary text-sm outline-none focus:ring-2 focus:ring-primary/40"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_180px] gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name, email, mobile, or student ID"
+              className="w-full h-10 pl-9 pr-3 rounded-xl bg-secondary text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as FilterKind)}
+            className="h-10 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40"
+            aria-label="Filter by status"
+          >
+            <option value="all">All ({counts.all})</option>
+            <option value="verified">Verified ({counts.verified})</option>
+            <option value="pending">Pending ({counts.pending})</option>
+            <option value="rejected">Rejected ({counts.rejected})</option>
+          </select>
         </div>
       </div>
 
