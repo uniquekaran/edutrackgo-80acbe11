@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, ShieldCheck, KeyRound, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { MobileShell } from "@/components/MobileShell";
 import { lovable } from "@/integrations/lovable";
 import { useStore } from "@/lib/store";
+import { signInAdmin } from "@/lib/admin-auth";
+import { setCurrentUser } from "@/lib/store";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -38,6 +40,10 @@ function AuthPage() {
   const { next } = Route.useSearch();
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [teacherMode, setTeacherMode] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -66,6 +72,26 @@ function AuthPage() {
     }
   }
 
+  async function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminLoading) return;
+    setAdminLoading(true);
+    try {
+      const res = await signInAdmin({ email, password, college: "AKTU" });
+      if (!res.ok || !res.user) {
+        toast.error(res.error ?? "Invalid administrator credentials.");
+        setAdminLoading(false);
+        return;
+      }
+      setCurrentUser(res.user);
+      toast.success("Welcome, administrator.");
+      navigate({ to: "/admin" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sign-in failed.");
+      setAdminLoading(false);
+    }
+  }
+
   return (
     <MobileShell>
       <div className="px-6 pt-10 pb-8 gradient-primary text-primary-foreground">
@@ -78,37 +104,101 @@ function AuthPage() {
           </div>
           <h1 className="text-2xl font-black">EduTrack — Modern College Management</h1>
         </div>
-        <h2 className="mt-8 text-3xl font-black leading-tight">Sign in to your campus</h2>
-        <p className="mt-2 text-sm opacity-90">Continue with your Google account. Students and staff use the same sign-in.</p>
+        <h2 className="mt-8 text-3xl font-black leading-tight">
+          {teacherMode ? "Administrator sign in" : "Sign in to your campus"}
+        </h2>
+        <p className="mt-2 text-sm opacity-90">
+          {teacherMode
+            ? "Enter your official administrator credentials."
+            : "Continue with your Google account. Students and staff use the same sign-in."}
+        </p>
       </div>
 
       <div className="flex-1 px-6 -mt-6 pb-8">
         <div className="rounded-3xl bg-surface shadow-soft p-6">
-          <button
-            onClick={handleGoogle}
-            disabled={googleLoading}
-            className="w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
-          >
-            {googleLoading ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> Signing in with Google…</>
-            ) : (
-              <><GoogleIcon className="w-5 h-5" /> Continue with Google</>
-            )}
-          </button>
+          {!teacherMode ? (
+            <>
+              <button
+                onClick={handleGoogle}
+                disabled={googleLoading}
+                className="w-full h-14 rounded-2xl bg-white border border-border shadow-soft flex items-center justify-center gap-3 font-semibold text-foreground active:scale-[0.98] transition-transform disabled:opacity-70"
+              >
+                {googleLoading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Signing in with Google…</>
+                ) : (
+                  <><GoogleIcon className="w-5 h-5" /> Continue with Google</>
+                )}
+              </button>
 
-          <div className="mt-5 flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
-            <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-foreground">Secure & private</p>
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                Google handles authentication. Administrators and students use the same sign-in.
+              <div className="mt-5 flex items-start gap-3 p-3.5 rounded-2xl bg-accent/40 border border-border">
+                <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Secure & private</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                    Google handles authentication for students. Administrators use email &amp; password below.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTeacherMode(true)}
+                className="mt-5 w-full h-11 rounded-xl border border-dashed border-border text-xs font-bold inline-flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:border-primary/60 transition"
+              >
+                <KeyRound className="w-3.5 h-3.5" /> Are you an Administrator? Teacher Login
+              </button>
+
+              <p className="mt-5 text-center text-[11px] text-muted-foreground">
+                By continuing you agree to EduTrack's Terms &amp; Privacy.
               </p>
-            </div>
-          </div>
-
-          <p className="mt-5 text-center text-[11px] text-muted-foreground">
-            By continuing you agree to EduTrack's Terms &amp; Privacy.
-          </p>
+            </>
+          ) : (
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email</span>
+                <div className="mt-1 relative">
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    autoFocus
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@college.edu"
+                    className="w-full h-12 pl-9 pr-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40"
+                    required
+                  />
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Password</span>
+                <div className="mt-1 relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-12 pl-9 pr-3 rounded-xl bg-secondary text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/40"
+                    required
+                  />
+                </div>
+              </label>
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="w-full h-12 rounded-xl gradient-primary text-primary-foreground text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {adminLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</> : <><KeyRound className="w-4 h-4" /> Login as Admin</>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeacherMode(false)}
+                className="w-full h-10 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground transition"
+              >
+                ← Back to student sign-in
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </MobileShell>
