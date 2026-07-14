@@ -29,7 +29,7 @@ function Documents() {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<DocRow | null>(null);
   // Anti-blur confirmation state.
-  const [pendingUpload, setPendingUpload] = useState<{ key: string; file: File; previewUrl: string | null } | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<{ key: string; file: File; previewUrl: string | null; kind: "image" | "pdf" | "other" } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [studentPhone, setStudentPhone] = useState("");
   const [fatherPhone, setFatherPhone] = useState("");
@@ -96,10 +96,12 @@ function Documents() {
     // Discard any previous preview state, then open the confirmation modal.
     if (pendingUpload?.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
     const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png"].includes(ext);
+    const isPdf = file.type === "application/pdf" || ext === "pdf";
     setPendingUpload({
       key,
       file,
-      previewUrl: isImage ? URL.createObjectURL(file) : null,
+      previewUrl: isImage || isPdf ? URL.createObjectURL(file) : null,
+      kind: isImage ? "image" : isPdf ? "pdf" : "other",
     });
     setConfirmClear(false);
   }
@@ -346,6 +348,7 @@ function Documents() {
         <AntiBlurModal
           fileName={pendingUpload.file.name}
           previewUrl={pendingUpload.previewUrl}
+          kind={pendingUpload.kind}
           slotLabel={REQUIRED_DOCS.find((d) => d.key === pendingUpload.key)?.label ?? pendingUpload.key}
           confirmed={confirmClear}
           setConfirmed={setConfirmClear}
@@ -361,6 +364,7 @@ function Documents() {
 function AntiBlurModal(props: {
   fileName: string;
   previewUrl: string | null;
+  kind: "image" | "pdf" | "other";
   slotLabel: string;
   confirmed: boolean;
   setConfirmed: (v: boolean) => void;
@@ -368,7 +372,7 @@ function AntiBlurModal(props: {
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const { fileName, previewUrl, slotLabel, confirmed, setConfirmed, uploading, onCancel, onConfirm } = props;
+  const { fileName, previewUrl, kind, slotLabel, confirmed, setConfirmed, uploading, onCancel, onConfirm } = props;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onCancel}>
       <div className="bg-surface w-full max-w-md max-h-[92vh] rounded-3xl shadow-elevated flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -383,12 +387,24 @@ function AntiBlurModal(props: {
           </button>
         </div>
         <div className="flex-1 overflow-auto bg-secondary/40 grid place-items-center p-4">
-          {previewUrl ? (
-            <img src={previewUrl} alt={fileName} className="max-w-full max-h-[52vh] rounded-2xl border border-border bg-white object-contain" />
+          {kind === "image" && previewUrl ? (
+            <div className="w-full">
+              <img src={previewUrl} alt={fileName} className="mx-auto max-w-full max-h-[52vh] rounded-2xl border border-border bg-white object-contain" />
+              <p className="mt-2 text-[11px] text-muted-foreground text-center truncate">{fileName}</p>
+            </div>
+          ) : kind === "pdf" && previewUrl ? (
+            <div className="w-full">
+              <div className="rounded-2xl overflow-hidden border border-border bg-white">
+                <iframe src={previewUrl} title={fileName} className="w-full h-[52vh]" />
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground text-center truncate flex items-center justify-center gap-1.5">
+                <FileText className="w-3 h-3" /> {fileName}
+              </p>
+            </div>
           ) : (
             <div className="text-center p-6">
               <FileText className="w-10 h-10 mx-auto text-primary" />
-              <p className="mt-3 text-sm font-bold">PDF file selected — ready to upload</p>
+              <p className="mt-3 text-sm font-bold">File selected — ready to upload</p>
               <p className="mt-1 text-xs text-muted-foreground break-all">{fileName}</p>
             </div>
           )}
