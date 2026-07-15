@@ -110,7 +110,10 @@ export function useSupabaseAuth() {
     };
 
 
-    supabase.auth.getSession().then(({ data }) => sync(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      lastUserId = data.session?.user?.id ?? null;
+      sync(data.session);
+    });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
