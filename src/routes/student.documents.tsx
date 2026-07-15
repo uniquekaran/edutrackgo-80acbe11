@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save, AlertTriangle,
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +83,9 @@ function Documents() {
   }
 
   function onFile(key: string, e: React.ChangeEvent<HTMLInputElement>) {
+    // Decouple from any parent form/navigation: never let this bubble.
+    e.preventDefault();
+    e.stopPropagation();
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -97,12 +100,15 @@ function Documents() {
     if (pendingUpload?.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
     const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png"].includes(ext);
     const isPdf = file.type === "application/pdf" || ext === "pdf";
-    setPendingUpload({
+    // Defer state update to next microtask so the file input's synthetic
+    // event fully unwinds before the modal mounts — prevents any outer
+    // effect from re-evaluating mid-event and navigating away.
+    queueMicrotask(() => setPendingUpload({
       key,
       file,
       previewUrl: isImage || isPdf ? URL.createObjectURL(file) : null,
       kind: isImage ? "image" : isPdf ? "pdf" : "other",
-    });
+    }));
     setConfirmClear(false);
   }
 
@@ -115,20 +121,29 @@ function Documents() {
   async function confirmUpload() {
     if (!pendingUpload || !confirmClear) return;
     const { key, file } = pendingUpload;
-    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    // Auto-compress heavy images client-side (max 1200px, quality 0.7).
+    let uploadFile: File = file;
+    try {
+      if (file.type.startsWith("image/") && file.type !== "image/gif") {
+        uploadFile = await compressImage(file, 1200, 0.7);
+      }
+    } catch (err) {
+      console.warn("compress failed, uploading original", err);
+    }
+    const ext = (uploadFile.name.split(".").pop() ?? "").toLowerCase();
     setUploadingKey(key);
     let fileUrl = "";
     try {
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || "bin"}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type, upsert: false,
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, uploadFile, {
+        contentType: uploadFile.type, upsert: false,
       });
       if (upErr) throw upErr;
       const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
       fileUrl = signed?.signedUrl ?? path;
     } catch (err) {
       console.warn("upload failed", err);
-      fileUrl = URL.createObjectURL(file);
+      fileUrl = URL.createObjectURL(uploadFile);
       toast.warning("Stored locally — cloud upload was blocked");
     }
     // Delete prior row for this doc type so "Replace" behaviour is clean
