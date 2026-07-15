@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save, AlertTriangle,
+  FileText, Upload, CheckCircle2, Clock, XCircle, Loader2, Eye, X, RefreshCw, Phone, GraduationCap, Save, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,12 +77,16 @@ function Documents() {
   const rejections = rejectionReasons(rows);
   const progress = computeProgress(rows, studentPhone);
   const pct = Math.round((progress.done / progress.total) * 100);
+  const isComplete = progress.done >= progress.total;
 
   async function pickFile(key: string) {
     fileRefs.current[key]?.click();
   }
 
   function onFile(key: string, e: React.ChangeEvent<HTMLInputElement>) {
+    // Decouple from any parent form/navigation: never let this bubble.
+    e.preventDefault();
+    e.stopPropagation();
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -97,12 +101,15 @@ function Documents() {
     if (pendingUpload?.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
     const isImage = file.type.startsWith("image/") || ["jpg", "jpeg", "png"].includes(ext);
     const isPdf = file.type === "application/pdf" || ext === "pdf";
-    setPendingUpload({
+    // Defer state update to next microtask so the file input's synthetic
+    // event fully unwinds before the modal mounts — prevents any outer
+    // effect from re-evaluating mid-event and navigating away.
+    queueMicrotask(() => setPendingUpload({
       key,
       file,
       previewUrl: isImage || isPdf ? URL.createObjectURL(file) : null,
       kind: isImage ? "image" : isPdf ? "pdf" : "other",
-    });
+    }));
     setConfirmClear(false);
   }
 
@@ -115,20 +122,29 @@ function Documents() {
   async function confirmUpload() {
     if (!pendingUpload || !confirmClear) return;
     const { key, file } = pendingUpload;
-    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    // Auto-compress heavy images client-side (max 1200px, quality 0.7).
+    let uploadFile: File = file;
+    try {
+      if (file.type.startsWith("image/") && file.type !== "image/gif") {
+        uploadFile = await compressImage(file, 1200, 0.7);
+      }
+    } catch (err) {
+      console.warn("compress failed, uploading original", err);
+    }
+    const ext = (uploadFile.name.split(".").pop() ?? "").toLowerCase();
     setUploadingKey(key);
     let fileUrl = "";
     try {
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext || "bin"}`;
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type, upsert: false,
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, uploadFile, {
+        contentType: uploadFile.type, upsert: false,
       });
       if (upErr) throw upErr;
       const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 365);
       fileUrl = signed?.signedUrl ?? path;
     } catch (err) {
       console.warn("upload failed", err);
-      fileUrl = URL.createObjectURL(file);
+      fileUrl = URL.createObjectURL(uploadFile);
       toast.warning("Stored locally — cloud upload was blocked");
     }
     // Delete prior row for this doc type so "Replace" behaviour is clean
@@ -198,19 +214,27 @@ function Documents() {
 
       {/* Progress */}
       <section className="px-5 mt-4">
-        <div className="rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated">
+        <div className={`rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated ${isComplete ? "ring-2 ring-emerald-400/70 shadow-[0_0_28px_-4px_rgba(16,185,129,0.55)]" : ""}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Progress</p>
               <p className="text-lg font-black mt-0.5">Documents Completed: {progress.done} / {progress.total}</p>
+              {isComplete && (
+                <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 shadow-[0_0_14px_-2px_rgba(16,185,129,0.7)] animate-pulse">
+                  <Sparkles className="w-3 h-3" /> 100% Complete — Verification Ready
+                </span>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black">{pct}%</p>
+              <p className={`text-2xl font-black ${isComplete ? "text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" : ""}`}>{pct}%</p>
               <p className="text-[10px] text-muted-foreground">completion</p>
             </div>
           </div>
           <div className="mt-3 h-2.5 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+            <div
+              className={`h-full transition-all ${isComplete ? "bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-[0_0_16px_2px_rgba(16,185,129,0.7)] animate-pulse" : "gradient-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       </section>
@@ -566,4 +590,41 @@ export function StatusTag({ status }: { status: DocStatus }) {
       <Icon className="w-3 h-3" /> {label}
     </span>
   );
+}
+
+/**
+ * Compress a JPG/PNG image using the native Canvas API.
+ * Downscales to `maxWidth` (preserving aspect ratio) and re-encodes as JPEG at `quality`.
+ * Returns the original file if the browser cannot decode it or the compressed result is larger.
+ */
+async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
+  if (typeof window === "undefined") return file;
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("read-failed"));
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("decode-failed"));
+    im.src = dataUrl;
+  });
+  const scale = Math.min(1, maxWidth / img.naturalWidth);
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  const blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+  );
+  if (!blob || blob.size >= file.size) return file;
+  const base = file.name.replace(/\.[^.]+$/, "");
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
 }

@@ -642,19 +642,47 @@ function PreviewModal({ doc, onClose }: { doc: DocRow; onClose: () => void }) {
 }
 
 function RejectDialog({ doc, onCancel, onSubmit }: { doc: DocRow; onCancel: () => void; onSubmit: (reason: string) => void }) {
-  const [reason, setReason] = useState("");
+  const PRESETS = [
+    "Document is Blurry/Unreadable",
+    "Wrong Document Uploaded",
+    "Document is Expired/Invalid",
+    "Other",
+  ] as const;
+  const [preset, setPreset] = useState<(typeof PRESETS)[number]>(PRESETS[0]);
+  const [other, setOther] = useState("");
+  const finalReason = preset === "Other" ? other.trim() : preset;
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4" onClick={onCancel}>
       <div className="bg-surface w-full max-w-md rounded-3xl shadow-elevated p-5" onClick={(e) => e.stopPropagation()}>
         <p className="text-sm font-bold">Reject "{doc.document_type}"</p>
         <p className="text-xs text-muted-foreground mt-1">Reason will be shown to the student.</p>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4}
-          placeholder="e.g. document is blurry, wrong document uploaded, missing page…"
-          className="mt-3 w-full p-3 rounded-xl bg-secondary text-sm outline-none" />
+        <label className="block mt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Reason</span>
+          <select
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as (typeof PRESETS)[number])}
+            className="mt-1 w-full h-11 px-3 rounded-xl bg-secondary text-sm font-semibold outline-none"
+          >
+            {PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </label>
+        {preset === "Other" && (
+          <textarea
+            value={other}
+            onChange={(e) => setOther(e.target.value)}
+            rows={3}
+            autoFocus
+            placeholder="Describe the issue…"
+            className="mt-3 w-full p-3 rounded-xl bg-secondary text-sm outline-none"
+          />
+        )}
         <div className="mt-4 flex gap-2">
           <button onClick={onCancel} className="flex-1 h-11 rounded-xl bg-secondary text-sm font-bold">Cancel</button>
-          <button onClick={() => reason.trim() ? onSubmit(reason.trim()) : toast.error("Reason is required")}
-            className="flex-1 h-11 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold">Reject</button>
+          <button
+            onClick={() => finalReason ? onSubmit(finalReason) : toast.error("Reason is required")}
+            disabled={!finalReason}
+            className="flex-1 h-11 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold disabled:opacity-60"
+          >Reject</button>
         </div>
       </div>
     </div>
