@@ -63,6 +63,11 @@ export function useSupabaseAuth() {
 
   useEffect(() => {
     let mounted = true;
+    // Track the last authenticated user id so repeat SIGNED_IN events
+    // (fired when a mobile browser resumes the tab after the native file
+    // picker, or when Supabase re-hydrates on focus) do NOT trigger a
+    // navigation. Only a genuinely new sign-in should redirect.
+    let lastUserId: string | null = null;
 
     const sync = async (session: import("@supabase/supabase-js").Session | null, opts?: { redirect?: boolean }) => {
       if (!session?.user) {
@@ -93,7 +98,14 @@ export function useSupabaseAuth() {
         return;
       }
       if (opts?.redirect) {
-        navigate({ to: result.user.role === "admin" ? "/admin" : "/student" });
+        // Only navigate away from the auth entry pages. If the user is
+        // already inside the app (e.g. returning from the mobile file
+        // picker on /student/documents), preserve their current route.
+        const path = window.location.pathname;
+        const onAuthPage = path === "/" || path.startsWith("/auth");
+        if (onAuthPage) {
+          navigate({ to: result.user.role === "admin" ? "/admin" : "/student" });
+        }
       }
     };
 
@@ -102,8 +114,16 @@ export function useSupabaseAuth() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
-        setTimeout(() => sync(session, { redirect: true }), 0);
+        const uid = session?.user?.id ?? null;
+        // Supabase re-fires SIGNED_IN on tab resume / token refresh on
+        // some mobile browsers. Skip the redirect when it's the same
+        // user we already had — this is what caused mobile users to be
+        // kicked back to the dashboard after picking a file.
+        const isNewLogin = !!uid && uid !== lastUserId;
+        lastUserId = uid;
+        setTimeout(() => sync(session, { redirect: isNewLogin }), 0);
       } else if (event === "SIGNED_OUT") {
+        lastUserId = null;
         clearLocalUser();
         navigate({ to: "/auth" });
       } else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
