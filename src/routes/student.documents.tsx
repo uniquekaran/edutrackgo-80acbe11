@@ -77,6 +77,7 @@ function Documents() {
   const rejections = rejectionReasons(rows);
   const progress = computeProgress(rows, studentPhone);
   const pct = Math.round((progress.done / progress.total) * 100);
+  const isComplete = progress.done >= progress.total;
 
   async function pickFile(key: string) {
     fileRefs.current[key]?.click();
@@ -213,19 +214,27 @@ function Documents() {
 
       {/* Progress */}
       <section className="px-5 mt-4">
-        <div className="rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated">
+        <div className={`rounded-2xl bg-surface shadow-soft p-5 animate-fade-in transition-all hover:shadow-elevated ${isComplete ? "ring-2 ring-emerald-400/70 shadow-[0_0_28px_-4px_rgba(16,185,129,0.55)]" : ""}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Progress</p>
               <p className="text-lg font-black mt-0.5">Documents Completed: {progress.done} / {progress.total}</p>
+              {isComplete && (
+                <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50 shadow-[0_0_14px_-2px_rgba(16,185,129,0.7)] animate-pulse">
+                  <Sparkles className="w-3 h-3" /> 100% Complete — Verification Ready
+                </span>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black">{pct}%</p>
+              <p className={`text-2xl font-black ${isComplete ? "text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" : ""}`}>{pct}%</p>
               <p className="text-[10px] text-muted-foreground">completion</p>
             </div>
           </div>
           <div className="mt-3 h-2.5 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full gradient-primary transition-all" style={{ width: `${pct}%` }} />
+            <div
+              className={`h-full transition-all ${isComplete ? "bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-[0_0_16px_2px_rgba(16,185,129,0.7)] animate-pulse" : "gradient-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       </section>
