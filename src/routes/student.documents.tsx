@@ -591,3 +591,40 @@ export function StatusTag({ status }: { status: DocStatus }) {
     </span>
   );
 }
+
+/**
+ * Compress a JPG/PNG image using the native Canvas API.
+ * Downscales to `maxWidth` (preserving aspect ratio) and re-encodes as JPEG at `quality`.
+ * Returns the original file if the browser cannot decode it or the compressed result is larger.
+ */
+async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
+  if (typeof window === "undefined") return file;
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("read-failed"));
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("decode-failed"));
+    im.src = dataUrl;
+  });
+  const scale = Math.min(1, maxWidth / img.naturalWidth);
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  const blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+  );
+  if (!blob || blob.size >= file.size) return file;
+  const base = file.name.replace(/\.[^.]+$/, "");
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+}
