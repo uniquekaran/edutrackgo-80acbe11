@@ -4,7 +4,6 @@ import {
   Compass, Globe, UserCircle, Settings, ShieldAlert,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { isAdminEmail } from "@/lib/tenant";
 import type { User } from "@/lib/store";
 
 export interface MenuItem {
@@ -40,13 +39,13 @@ const GLOBAL: MenuItem[] = [
 
 export function isCoreSuiteUser(user: Pick<User, "email" | "role" | "college"> | null | undefined) {
   if (!user) return false;
-  if (user.role === "admin" || isAdminEmail(user.email)) return true;
+  if (user.role === "admin") return true;
   return user.college === "AKTU" || user.college === "VSET";
 }
 
 export function getMenuForUser(user: Pick<User, "email" | "role" | "college"> | null | undefined): MenuItem[] {
   const base = isCoreSuiteUser(user) ? CORE : GLOBAL;
-  if (user && (user.role === "admin" || isAdminEmail(user.email))) {
+  if (user?.role === "admin") {
     return [...base, { to: "/manage/companies", label: "Admin Console", icon: ShieldAlert }];
   }
   return base;
