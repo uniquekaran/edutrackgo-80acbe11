@@ -75,8 +75,15 @@ function AdminLayoutComponent() {
         setAuthState(true);
         console.log("AuthState set to:", true);
       } else {
-        // Clear any stale store user so /auth/admin doesn't bounce us back.
-        clearLocalUser();
+        // If a signed-in non-admin (student) tried to reach /admin, warn them
+        // and send them to their dashboard instead of the admin login page.
+        if (sessionUser && !isAdmin) {
+          toast.error("Admin area — students are not permitted here.", {
+            description: "Redirected to your dashboard.",
+          });
+        } else {
+          clearLocalUser();
+        }
         setAuthState(false);
         console.log("AuthState set to:", false);
       }
@@ -101,7 +108,12 @@ function AdminLayoutComponent() {
 
   useEffect(() => {
     if (authState === false) {
-      navRef.current({ to: "/auth/admin", replace: true });
+      // Non-admin signed-in users go to /student; anonymous go to /auth/admin.
+      const target =
+        typeof window !== "undefined" && store.get().user?.role === "student"
+          ? "/student"
+          : "/auth/admin";
+      navRef.current({ to: target, replace: true });
     }
   }, [authState]);
 
