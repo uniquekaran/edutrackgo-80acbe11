@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { GraduationCap, LogOut, Users } from "lucide-react";
+import { GraduationCap, LogOut, Users, Eye } from "lucide-react";
 import { signOut as clearLocalUser, useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ export function DesktopSidebar() {
   const user = useStore((s) => s.user);
   const navigate = useNavigate();
   const items = getMenuForUser(user);
+  const isMasterAdmin = isAdminEmail(user?.email);
 
   async function handleSignOut() {
     try { await supabase.auth.signOut(); } catch { /* noop */ }
@@ -21,7 +22,7 @@ export function DesktopSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex sticky top-0 h-screen w-64 shrink-0 flex-col glass-strong border-r border-border/60 px-4 py-6 z-20">
+    <aside className="hidden md:flex sticky top-0 h-screen w-64 shrink-0 flex-col glass-strong border-r border-border/60 px-4 py-6 z-20 no-select">
       <div className="flex items-center gap-2.5 px-2">
         <div className="w-10 h-10 rounded-2xl gradient-primary text-primary-foreground grid place-items-center shadow-elevated">
           <GraduationCap className="w-5 h-5" />
@@ -32,7 +33,7 @@ export function DesktopSidebar() {
         </div>
       </div>
 
-      <nav className="mt-8 space-y-1.5 flex-1 overflow-y-auto">
+      <nav className="mt-8 space-y-1.5 flex-1 overflow-y-auto no-scrollbar">
         {items.map((it, i) => {
           const Icon = it.icon;
           return (
@@ -59,7 +60,16 @@ export function DesktopSidebar() {
         )}
       </nav>
 
-      <div className="rounded-2xl glass p-3 space-y-3">
+      {isMasterAdmin && (
+        <button
+          onClick={() => navigate({ to: "/admin" })}
+          className="mb-3 w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl bg-primary/10 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary/15 transition"
+          title="Reviewer: switch to Admin View"
+        >
+          <Eye className="w-3.5 h-3.5" /> Switch to Admin View
+        </button>
+      )}
+      <div className="rounded-2xl glass p-3 space-y-3 pb-4">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-accent text-primary grid place-items-center shrink-0 font-black text-sm">
             {(user?.name ?? user?.email ?? "S").slice(0, 1).toUpperCase()}

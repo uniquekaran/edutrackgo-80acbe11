@@ -9,9 +9,10 @@ import {
   Loader2,
   Menu,
   X,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
+import { store, useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -75,8 +76,15 @@ function AdminLayoutComponent() {
         setAuthState(true);
         console.log("AuthState set to:", true);
       } else {
-        // Clear any stale store user so /auth/admin doesn't bounce us back.
-        clearLocalUser();
+        // If a signed-in non-admin (student) tried to reach /admin, warn them
+        // and send them to their dashboard instead of the admin login page.
+        if (sessionUser && !isAdmin) {
+          toast.error("Admin area — students are not permitted here.", {
+            description: "Redirected to your dashboard.",
+          });
+        } else {
+          clearLocalUser();
+        }
         setAuthState(false);
         console.log("AuthState set to:", false);
       }
@@ -101,7 +109,12 @@ function AdminLayoutComponent() {
 
   useEffect(() => {
     if (authState === false) {
-      navRef.current({ to: "/auth/admin", replace: true });
+      // Non-admin signed-in users go to /student; anonymous go to /auth/admin.
+      const target =
+        typeof window !== "undefined" && store.get().user?.role === "student"
+          ? "/student"
+          : "/auth/admin";
+      navRef.current({ to: target, replace: true });
     }
   }, [authState]);
 
@@ -140,7 +153,7 @@ function AdminLayoutComponent() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-background text-foreground">
+    <div className="min-h-screen w-full flex bg-background text-foreground no-select">
       {/* Desktop sidebar */}
       <SidebarInner
         displayUser={displayUser}
@@ -241,7 +254,15 @@ function SidebarInner({
         })}
       </nav>
 
-      <div className="p-3 border-t border-border space-y-2">
+      <div className="p-3 border-t border-border space-y-2 pb-4">
+        <Link
+          to="/student"
+          onClick={onNavigate}
+          className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl bg-primary/10 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary/15 transition"
+          title="Reviewer: switch to Student View"
+        >
+          <Eye className="w-3.5 h-3.5" /> Switch to Student View
+        </Link>
         <div className="px-2 py-2 rounded-lg bg-muted/40 space-y-1">
           <p className="text-[11px] font-bold truncate">{displayUser.name}</p>
           <p className="text-[10px] text-muted-foreground truncate">{displayUser.email}</p>

@@ -201,3 +201,25 @@
     0 8px 30px -6px color-mix(in oklab, var(--color-primary-glow) 55%, transparent);
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@utility no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes notice-blink {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary-glow) 45%, transparent); }
+  50% { box-shadow: 0 0 22px 4px color-mix(in oklab, var(--color-primary-glow) 55%, transparent); }
+}
+
+@utility notice-live {
+  animation: notice-blink 1.8s ease-in-out infinite;
+}
+
