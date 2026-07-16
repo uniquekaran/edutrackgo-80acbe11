@@ -10,6 +10,8 @@ import { RouteSkeleton } from "@/components/RouteSkeleton";
 const REQUEST_TIMEOUT_MS = 30_000;
 const SLOW_HINT_MS = 5_000;
 const TIMEOUT_MESSAGE = "Something went wrong, please try again.";
+const AI_KEY_STORAGE = "edutrack:ai-api-key";
+const MISSING_KEY_MESSAGE = "Please configure your API Key in Admin Settings.";
 
 export const Route = createFileRoute("/student/eduai")({
   head: () => ({ meta: [{ title: "EduAI Assistant — EduTrack" }] }),
@@ -46,6 +48,7 @@ function EduAIPage() {
   const [streaming, setStreaming] = useState(false);
   const [slowHint, setSlowHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -84,10 +87,31 @@ function EduAIPage() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streaming]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // Read the admin-configured API key from localStorage; refresh on focus/storage.
+  useEffect(() => {
+    const read = () => {
+      try { setApiKey((localStorage.getItem(AI_KEY_STORAGE) ?? "").trim()); }
+      catch { setApiKey(""); }
+    };
+    read();
+    window.addEventListener("storage", read);
+    window.addEventListener("focus", read);
+    return () => {
+      window.removeEventListener("storage", read);
+      window.removeEventListener("focus", read);
+    };
+  }, []);
+
   async function send(prompt?: string) {
     const value = (prompt ?? text).trim();
     if (!value || streaming) return;
     setError(null);
+
+    if (!apiKey) {
+      setError(MISSING_KEY_MESSAGE);
+      toast.error(MISSING_KEY_MESSAGE);
+      return;
+    }
 
     const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: value, ts: Date.now() };
     const assistantId = crypto.randomUUID();
@@ -119,7 +143,10 @@ function EduAIPage() {
       console.log("[eduai] sending request", { turns: history.length });
       const res = await fetch("/api/eduai", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-AI-Key": apiKey,
+        },
         body: JSON.stringify({ messages: history, course }),
         signal: controller.signal,
       });
@@ -203,6 +230,13 @@ function EduAIPage() {
           </div>
         </div>
       </header>
+
+      {!apiKey && (
+        <div className="mx-4 mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs p-3 flex items-start gap-2">
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span><span className="font-bold">{MISSING_KEY_MESSAGE}</span> An administrator must save an AI API key under Admin → Settings before EduAI can respond.</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((m) => (

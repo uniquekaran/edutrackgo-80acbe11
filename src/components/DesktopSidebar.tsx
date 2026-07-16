@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { GraduationCap, LogOut, Users, Eye } from "lucide-react";
+import { GraduationCap, LogOut, Eye } from "lucide-react";
 import { signOut as clearLocalUser, useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -49,15 +49,6 @@ export function DesktopSidebar() {
             </Link>
           );
         })}
-        {(isAdminEmail(user?.email) || user?.role === "admin") && (
-          <Link
-            to="/admin"
-            className="group relative flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all"
-          >
-            <Users className="w-[18px] h-[18px] shrink-0" />
-            <span className="truncate">Admin Command Center</span>
-          </Link>
-        )}
       </nav>
 
       {isMasterAdmin && (

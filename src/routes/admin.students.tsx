@@ -90,7 +90,9 @@ function AdminStudents() {
         nextDiagnostics.push({ source: "profiles", level: "error", message: formatDbError("profiles", pErr) });
         setProfiles([]);
       } else {
-        const allProfiles = (profs ?? []) as ProfileLite[];
+        const allProfiles = ((profs ?? []) as ProfileLite[]).filter(
+          (p) => (p.email ?? "").trim().toLowerCase() !== "vset.official@gmail.com"
+        );
         if (allProfiles.length === 0) {
           nextDiagnostics.push({
             source: "profiles",

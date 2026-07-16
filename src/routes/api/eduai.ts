@@ -52,8 +52,9 @@ export const Route = createFileRoute("/api/eduai")({
         if (last.role !== "user") return json({ error: "last message must be from user" }, 400);
         if (last.content.length > 4000) return json({ error: "prompt too long" }, 400);
 
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return json({ error: "AI is not configured on the server (missing LOVABLE_API_KEY)." }, 500);
+        const userKey = (request.headers.get("X-User-AI-Key") ?? "").trim();
+        const key = userKey || process.env.LOVABLE_API_KEY;
+        if (!key) return json({ error: "Please configure your API Key in Admin Settings." }, 400);
 
         // Decide whether to run web search
         let sources: WebSearchResult[] = [];
