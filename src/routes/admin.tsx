@@ -9,6 +9,7 @@ import {
   Loader2,
   Menu,
   X,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { store, useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
@@ -253,7 +254,15 @@ function SidebarInner({
         })}
       </nav>
 
-      <div className="p-3 border-t border-border space-y-2">
+      <div className="p-3 border-t border-border space-y-2 pb-4">
+        <Link
+          to="/student"
+          onClick={onNavigate}
+          className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-xl bg-primary/10 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary/15 transition"
+          title="Reviewer: switch to Student View"
+        >
+          <Eye className="w-3.5 h-3.5" /> Switch to Student View
+        </Link>
         <div className="px-2 py-2 rounded-lg bg-muted/40 space-y-1">
           <p className="text-[11px] font-bold truncate">{displayUser.name}</p>
           <p className="text-[10px] text-muted-foreground truncate">{displayUser.email}</p>
