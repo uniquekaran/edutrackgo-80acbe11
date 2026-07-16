@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
+import { store, useStore, signOut as clearLocalUser, setCurrentUser, type User } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { ThemeToggle } from "@/components/ThemeToggle";
