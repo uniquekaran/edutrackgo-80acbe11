@@ -153,7 +153,7 @@ function AdminLayoutComponent() {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-background text-foreground">
+    <div className="min-h-screen w-full flex bg-background text-foreground no-select">
       {/* Desktop sidebar */}
       <SidebarInner
         displayUser={displayUser}
